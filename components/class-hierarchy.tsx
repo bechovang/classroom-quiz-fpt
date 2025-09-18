@@ -1,0 +1,196 @@
+"use client"
+
+import { useClassroom } from "@/contexts/classroom-context"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ChevronDown, ChevronRight, FolderOpen, Folder, User, Plus, Upload, MoreHorizontal } from "lucide-react"
+import { useState } from "react"
+import { AddStudentDialog } from "@/components/add-student-dialog"
+import { ImportStudentsDialog } from "@/components/import-students-dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
+export function ClassHierarchy() {
+  const { state, dispatch, addClass } = useClassroom()
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set([state.currentClass?.id || ""]))
+  const [showAddStudent, setShowAddStudent] = useState(false)
+  const [showImportStudents, setShowImportStudents] = useState(false)
+
+  const toggleClass = (classId: string) => {
+    const newExpanded = new Set(expandedClasses)
+    if (newExpanded.has(classId)) {
+      newExpanded.delete(classId)
+    } else {
+      newExpanded.add(classId)
+    }
+    setExpandedClasses(newExpanded)
+  }
+
+  const createNewClass = () => {
+    const className = prompt("Nhập tên lớp:")
+    if (className) {
+      addClass(className)
+    }
+  }
+
+  const selectClass = (classData: any) => {
+    dispatch({ type: "SET_CURRENT_CLASS", payload: classData })
+  }
+
+  return (
+    <div className="h-full bg-sidebar border-r border-sidebar-border">
+      {/* Header */}
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-sidebar-foreground">Danh sách lớp</h2>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={createNewClass}
+            className="h-7 w-7 p-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAddStudent(true)}
+            className="flex-1 h-8 text-xs bg-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            disabled={!state.currentClass}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Thêm SV
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowImportStudents(true)}
+            className="flex-1 h-8 text-xs bg-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            disabled={!state.currentClass}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Import
+          </Button>
+        </div>
+      </div>
+
+      {/* Class Tree */}
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="space-y-1">
+          {state.classes.map((classItem) => {
+            const isExpanded = expandedClasses.has(classItem.id)
+            const isSelected = state.currentClass?.id === classItem.id
+            const studentCount = classItem.students.length
+
+            return (
+              <div key={classItem.id} className="space-y-1">
+                {/* Class Item */}
+                <div
+                  className={`
+                    flex items-center gap-2 p-2 rounded-md cursor-pointer group
+                    ${
+                      isSelected
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+                    }
+                  `}
+                  onClick={() => selectClass(classItem)}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-transparent"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleClass(classItem.id)
+                    }}
+                  >
+                    {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </Button>
+
+                  {isExpanded ? <FolderOpen className="h-4 w-4 text-sidebar-accent" /> : <Folder className="h-4 w-4" />}
+
+                  <span className="flex-1 text-sm font-medium truncate">{classItem.name}</span>
+
+                  <Badge variant="secondary" className="text-xs h-5">
+                    {studentCount}
+                  </Badge>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>Sửa lớp</DropdownMenuItem>
+                      <DropdownMenuItem>Sao chép</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive">Xóa</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Students List */}
+                {isExpanded && (
+                  <div className="ml-6 space-y-1">
+                    {classItem.students.map((student) => (
+                      <div
+                        key={student.id}
+                        className={`
+                          flex items-center gap-2 p-2 rounded-md text-sm group
+                          ${
+                            student.isCalled
+                              ? "opacity-50 text-muted-foreground"
+                              : "hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+                          }
+                        `}
+                      >
+                        <User className="h-3 w-3" />
+                        <span className="flex-1 truncate">{student.name}</span>
+
+                        <Badge variant="outline" className="text-xs h-4">
+                          {student.studentId}
+                        </Badge>
+                      </div>
+                    ))}
+
+                    {classItem.students.length === 0 && (
+                      <div className="text-xs text-muted-foreground p-2 text-center">Chưa có học sinh</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {state.classes.length === 0 && (
+          <div className="text-center p-8 text-muted-foreground">
+            <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Chưa có lớp học</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={createNewClass}
+              className="mt-2 text-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              Tạo lớp đầu tiên
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Dialogs */}
+      <AddStudentDialog open={showAddStudent} onOpenChange={setShowAddStudent} />
+      <ImportStudentsDialog open={showImportStudents} onOpenChange={setShowImportStudents} />
+    </div>
+  )
+}
