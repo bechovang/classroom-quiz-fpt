@@ -12,7 +12,7 @@ import Link from "next/link"
 
 function HomePage() {
   const { state: authState } = useAuth()
-  const { state } = useClassroom()
+  const { state, addClass, selectClass } = useClassroom()
 
   if (state.isLoading) {
     return (
@@ -26,6 +26,13 @@ function HomePage() {
 
   // Show role selection if no class is available for teachers
   if (!state.currentClass && authState.user?.role === "teacher") {
+    const handleContinueAsTeacher = async () => {
+      if (state.classes.length > 0) {
+        await selectClass(state.classes[0].id)
+      } else {
+        await addClass("My Class")
+      }
+    }
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center">
         <div className="container mx-auto px-6">
@@ -65,7 +72,7 @@ function HomePage() {
                     <li>• QR code generation & validation</li>
                     <li>• Real-time activity tracking</li>
                   </ul>
-                  <Button className="w-full" size="lg">
+                  <Button className="w-full" size="lg" onClick={() => void handleContinueAsTeacher()}>
                     Continue as Teacher
                   </Button>
                 </CardContent>

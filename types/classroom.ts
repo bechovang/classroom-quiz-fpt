@@ -30,6 +30,14 @@ export interface Quiz {
   qrCode?: string
 }
 
+export type QuizStats = {
+  A: number
+  B: number
+  C: number
+  D: number
+  total: number
+}
+
 export interface Activity {
   id: string
   studentId: string
@@ -50,6 +58,8 @@ export interface ClassData {
   activities: Activity[] // Student activities
   createdAt: number
   updatedAt: number
+  classCode?: string
+  quizStats?: QuizStats
 }
 
 export type ViewMode = "teacher" | "student"

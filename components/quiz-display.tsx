@@ -18,7 +18,8 @@ export function QuizDisplay() {
 
   const quiz = state.currentClass.currentQuiz
   const totalStudents = state.currentClass.students.length
-  const answeredStudents = quiz.answers.length
+  const stats = state.currentClass.quizStats || { A: 0, B: 0, C: 0, D: 0, total: 0 }
+  const answeredStudents = stats.total
 
   const handleSetCorrectAnswer = (answer: "A" | "B" | "C" | "D") => {
     setSelectedCorrectAnswer(answer)
@@ -30,9 +31,7 @@ export function QuizDisplay() {
     setSelectedCorrectAnswer(null)
   }
 
-  const getAnswerCount = (option: "A" | "B" | "C" | "D") => {
-    return quiz.answers.filter((answer) => answer.answer === option).length
-  }
+  const getAnswerCount = (option: "A" | "B" | "C" | "D") => stats[option]
 
   const getAnswerPercentage = (option: "A" | "B" | "C" | "D") => {
     if (answeredStudents === 0) return 0

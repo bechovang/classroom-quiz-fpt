@@ -17,7 +17,7 @@ interface StudentSelectorProps {
 }
 
 export function StudentSelector({ onStudentSelect }: StudentSelectorProps) {
-  const { state } = useClassroom()
+  const { state, selectClass } = useClassroom()
   const { redirectToLogin } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const router = useRouter()

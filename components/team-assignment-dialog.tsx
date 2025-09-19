@@ -38,24 +38,17 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
   ])
 
   useEffect(() => {
-    if (!state.currentClass) return null
-  }, [state.currentClass])
+    if (!state.currentClass) return
+    const stats = state.currentClass.quizStats || { A: 0, B: 0, C: 0, D: 0, total: 0 }
+    setAnswerOptions([
+      { id: "A", label: "Đáp án A", count: stats.A, students: [] },
+      { id: "B", label: "Đáp án B", count: stats.B, students: [] },
+      { id: "C", label: "Đáp án C", count: stats.C, students: [] },
+      { id: "D", label: "Đáp án D", count: stats.D, students: [] },
+    ])
+  }, [state.currentClass?.quizStats])
 
-  useEffect(() => {
-    if (!isLocked && open) {
-      const interval = setInterval(() => {
-        setAnswerOptions((prev) =>
-          prev.map((option) => ({
-            ...option,
-            count: Math.floor(Math.random() * state.currentClass!.students.length),
-            students: [], // In real implementation, this would track actual student selections
-          })),
-        )
-      }, 2000)
-
-      return () => clearInterval(interval)
-    }
-  }, [isLocked, open, state.currentClass])
+  // Removed fake random updates; counts now come from Supabase realtime (quiz_stats)
 
   const handleToggleLock = () => {
     setIsLocked(!isLocked)
@@ -98,7 +91,7 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
     }, 3000)
   }
 
-  const totalSelections = answerOptions.reduce((sum, option) => sum + option.count, 0)
+  const totalSelections = state.currentClass?.quizStats?.total || answerOptions.reduce((sum, option) => sum + option.count, 0)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

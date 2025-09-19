@@ -16,7 +16,7 @@ interface StudentDashboardProps {
 }
 
 export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
-  const { state } = useClassroom()
+  const { state, submitAnswer } = useClassroom()
   const { redirectToLogin } = useAuth()
   const [scanSuccess, setScanSuccess] = useState<{ points: number; timestamp: number } | null>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
@@ -37,16 +37,21 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 5) as Activity[]
 
-  const handleAnswerSelect = (answer: string) => {
+  const handleAnswerSelect = async (answer: string) => {
+    if (!state.currentClass) return
     setClickedButton(answer)
-    setSelectedAnswer(answer) // This now represents the single selected answer
+    setSelectedAnswer(answer)
 
-    setTimeout(() => setClickedButton(null), 1000)
-
-    setTimeout(() => {
-      setScanSuccess({ points: 10, timestamp: Date.now() })
-      setTimeout(() => setScanSuccess(null), 3000)
-    }, 300)
+    try {
+      const s = state.currentClass.students.find((x) => x.id === studentId)
+      if (s) await submitAnswer(state.currentClass.id, s.id, s.name, answer as "A" | "B" | "C" | "D")
+    } finally {
+      setTimeout(() => setClickedButton(null), 1000)
+      setTimeout(() => {
+        setScanSuccess({ points: 10, timestamp: Date.now() })
+        setTimeout(() => setScanSuccess(null), 3000)
+      }, 300)
+    }
   }
 
   return (

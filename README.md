@@ -253,3 +253,88 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ for educators and students worldwide**
+
+## 🧩 Troubleshooting (Windows)
+
+### 1) "Module not found: Can't resolve '@supabase/supabase-js'"
+
+Error example:
+
+```
+⨯ ./lib/supabaseClient.ts:3:1
+Module not found: Can't resolve '@supabase/supabase-js'
+```
+
+Cause:
+- Package missing or a canary version resolution glitch.
+
+Fix (PowerShell):
+
+```powershell
+npm uninstall @supabase/supabase-js
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+npm install @supabase/supabase-js@latest --legacy-peer-deps
+npm run dev
+```
+
+Notes:
+- If it still fails, try a clean install:
+
+```powershell
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item package-lock.json -ErrorAction SilentlyContinue
+npm install --legacy-peer-deps
+npm run dev
+```
+
+### 2) "'next' is not recognized as an internal or external command"
+
+Error example:
+
+```
+'next' is not recognized as an internal or external command,
+operable program or batch file.
+```
+
+Cause:
+- Dependencies not installed in the project directory.
+
+Fix (PowerShell):
+
+```powershell
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Ensure Node.js >= 18.
+
+### 3) Watchpack Error (initial scan): EINVAL lstat 'C:\pagefile.sys'
+
+Warning example:
+
+```
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\\pagefile.sys'
+```
+
+Cause:
+- Windows file watcher encountering system files. Typically harmless.
+
+Workarounds (optional):
+
+```powershell
+$env:WATCHPACK_POLLING = "true"
+npm run dev
+```
+
+Or simply ignore the warning if the app runs normally.
+
+### 4) "Port 3000 is in use, trying 3001 instead."
+
+Info:
+- Next.js automatically switches to another free port (e.g., 3001). You can proceed at the shown URL.
+
+Free the port (optional):
+
+```powershell
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000 -State Listen).OwningProcess | Stop-Process -Force
+```

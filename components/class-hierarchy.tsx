@@ -3,17 +3,40 @@
 import { useClassroom } from "@/contexts/classroom-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight, FolderOpen, Folder, User, Plus, Upload, MoreHorizontal } from "lucide-react"
+import { ChevronDown, ChevronRight, FolderOpen, Folder, User, Plus, Upload, Download, Pencil, Trash } from "lucide-react"
 import { useState } from "react"
 import { AddStudentDialog } from "@/components/add-student-dialog"
 import { ImportStudentsDialog } from "@/components/import-students-dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function ClassHierarchy() {
-  const { state, dispatch, addClass } = useClassroom()
+  const { state, dispatch, addClass, selectClass, renameClass, deleteClass, deleteStudent, updateStudent } = useClassroom()
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set([state.currentClass?.id || ""]))
   const [showAddStudent, setShowAddStudent] = useState(false)
   const [showImportStudents, setShowImportStudents] = useState(false)
+
+  const escapeCsv = (value: string) => {
+    const v = value ?? ""
+    if (v.includes(",") || v.includes("\n") || v.includes('"')) {
+      return '"' + v.replace(/"/g, '""') + '"'
+    }
+    return v
+  }
+
+  const handleExport = () => {
+    if (!state.currentClass) return
+    const lines = state.currentClass.students.map((s) => `${escapeCsv(s.name)},${escapeCsv(s.studentId)}`)
+    const content = lines.join("\n")
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const filename = `${(state.currentClass.name || "class").replace(/[^a-zA-Z0-9-_]+/g, "_")}_students.csv`
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const toggleClass = (classId: string) => {
     const newExpanded = new Set(expandedClasses)
@@ -32,8 +55,8 @@ export function ClassHierarchy() {
     }
   }
 
-  const selectClass = (classData: any) => {
-    dispatch({ type: "SET_CURRENT_CLASS", payload: classData })
+  const handleSelectClass = async (classData: any) => {
+    await selectClass(classData.id)
   }
 
   return (
@@ -74,6 +97,16 @@ export function ClassHierarchy() {
             <Upload className="h-3 w-3 mr-1" />
             Import
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExport}
+            className="flex-1 h-8 text-xs bg-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            disabled={!state.currentClass || state.currentClass.students.length === 0}
+          >
+            <Download className="h-3 w-3 mr-1" />
+            Export
+          </Button>
         </div>
       </div>
 
@@ -97,7 +130,7 @@ export function ClassHierarchy() {
                         : "hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
                     }
                   `}
-                  onClick={() => selectClass(classItem)}
+                  onClick={() => void handleSelectClass(classItem)}
                 >
                   <Button
                     variant="ghost"
@@ -116,26 +149,38 @@ export function ClassHierarchy() {
                   <span className="flex-1 text-sm font-medium truncate">{classItem.name}</span>
 
                   <Badge variant="secondary" className="text-xs h-5">
-                    {studentCount}
+                    {studentCount} học sinh
                   </Badge>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>Sửa lớp</DropdownMenuItem>
-                      <DropdownMenuItem>Sao chép</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Xóa</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const name = prompt("Tên lớp mới:", classItem.name)
+                        if (name) renameClass(classItem.id, name)
+                      }}
+                      aria-label="Sửa lớp"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (confirm("Xóa lớp này? Toàn bộ học sinh và câu trả lời sẽ bị xóa.")) {
+                          void deleteClass(classItem.id)
+                        }
+                      }}
+                      aria-label="Xóa lớp"
+                    >
+                      <Trash className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Students List */}
@@ -159,6 +204,40 @@ export function ClassHierarchy() {
                         <Badge variant="outline" className="text-xs h-4">
                           {student.studentId}
                         </Badge>
+                        <Badge variant="secondary" className="text-xs h-4">
+                          {student.score} điểm
+                        </Badge>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const newName = prompt("Tên học sinh mới:", student.name)
+                              if (!newName) return
+                              const newCode = prompt("MSSV mới:", student.studentId)
+                              const updated = { ...student, name: newName, studentId: newCode || "" }
+                              void updateStudent(classItem.id, updated)
+                            }}
+                            aria-label="Sửa học sinh"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm("Xóa học sinh này?")) void deleteStudent(classItem.id, student.id)
+                            }}
+                            aria-label="Xóa học sinh"
+                          >
+                            <Trash className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
 
