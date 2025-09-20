@@ -73,8 +73,8 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
 
     for (const raw of lines) {
       const line = raw.trim()
-      // support comma or tab separated: positive,wrong
-      const parts = line.split(/[\s,\t]+/).filter(Boolean)
+      // prefer TAB; still accept comma/space
+      const parts = line.split(/[\t,\s]+/).filter(Boolean)
       const p = Number.parseInt(parts[0] ?? "0")
       const w = Number.parseInt(parts[1] ?? "0")
       pos.push(isNaN(p) ? 0 : p)
@@ -96,7 +96,8 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
     for (let i = 0; i < maxLen; i++) {
       const p = questionPoints[i] ?? 0
       const w = wrongPoints[i] ?? 0
-      lines.push(`${p}, ${w}`)
+      // export using TAB by default
+      lines.push(`${p}\t${w}`)
     }
     setImportText(lines.join("\n"))
   }
@@ -182,13 +183,13 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="importText" className="text-sm font-medium">
-                    Nhập điểm (mỗi hàng: Điểm cộng, Điểm trừ):
+                    Nhập điểm (mỗi hàng: Điểm cộng[TAB]Điểm trừ):
                   </Label>
                   <Textarea
                     id="importText"
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
-                    placeholder="1, 0&#10;2, -1&#10;3, 0&#10;4, -2&#10;5, 0"
+                    placeholder={`1\t0\n2\t-1\n3\t0\n4\t-2\n5\t0`}
                     className="mt-2 h-32"
                   />
                 </div>

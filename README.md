@@ -8,6 +8,12 @@ A modern, comprehensive classroom management web application built with Next.js,
 - **Student Management**: Add, edit, remove students with CSV import/export
 - **Random Name Picker**: Animated picker with visual effects and confetti
 - **Scoring System**: Award points with quick buttons or custom amounts
+- **Per-question Quiz**:
+  - Lock/unlock quiz in real time via Supabase (`is_quiz_locked`)
+  - Open for whole class after a wrong answer; show live distribution (A/B/C/D)
+  - Block the initially called student from answering in that open round
+  - Configure per-question points and per-question wrong points (can be negative)
+  - Import/Export per-question points in pairs: `positive, wrong`
 - **QR Code Generator**: Create time-limited QR codes for student activities
 - **Team Management**: Organize students into teams with balanced assignments
 - **Real-time Analytics**: Track class progress and student performance
@@ -27,6 +33,7 @@ A modern, comprehensive classroom management web application built with Next.js,
 - **Data Persistence**: LocalStorage with automatic backup and restore
 - **Undo/Redo System**: Comprehensive action history with rollback capabilities
 - **Real-time Updates**: Instant UI updates across all components
+  - Supabase Postgres Changes for `class_sessions`/`students`
 - **Modern UI/UX**: Clean design with smooth animations and transitions
 
 ## 🚀 Quick Start
@@ -80,9 +87,11 @@ A modern, comprehensive classroom management web application built with Next.js,
    - Organize into teams for group activities
    - Edit student information as needed
 3. **Conduct Activities**:
-   - Use random picker to select students
-   - Award points for correct answers or participation
-   - Generate QR codes for interactive activities
+   - Use random picker to select (R)
+   - Wrong (W): immediately deduct per-question wrong points from the called student and open quiz
+   - Correct (C): mark correct; optionally End Question (E) to grade all and lock
+   - End Question (E): grade correct answers by current question points; advance index
+   - Shortcuts: L (lock/unlock), A (reset answers), S (reset scores)
 4. **Monitor Progress**:
    - View real-time class statistics
    - Check leaderboard and student rankings
@@ -93,7 +102,7 @@ A modern, comprehensive classroom management web application built with Next.js,
 1. **Login** with student credentials or select profile
 2. **View Dashboard**: Check personal stats and team information
 3. **Participate**: Scan QR codes to earn points and join activities
-4. **Track Progress**: Monitor achievements and activity history
+4. **Track Progress**: Locked quiz disables answers; if you were the called wrong student, you are blocked for that round.
 
 ## 🏗️ Project Structure
 
@@ -148,16 +157,9 @@ Built with shadcn/ui components for consistency and accessibility:
 Create a `.env.local` file for local development:
 
 \`\`\`env
-# Auth0 Configuration (optional)
-AUTH0_SECRET=your-auth0-secret
-AUTH0_BASE_URL=http://localhost:3000
-AUTH0_ISSUER_BASE_URL=https://your-domain.auth0.com
-AUTH0_CLIENT_ID=your-client-id
-AUTH0_CLIENT_SECRET=your-client-secret
-
-# App Configuration
-NEXT_PUBLIC_APP_NAME=ClassroomPro
-NEXT_PUBLIC_APP_VERSION=1.0.0
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 \`\`\`
 
 ### Customization
@@ -338,3 +340,52 @@ Free the port (optional):
 ```powershell
 Get-Process -Id (Get-NetTCPConnection -LocalPort 3000 -State Listen).OwningProcess | Stop-Process -Force
 ```
+
+## 🧪 Quiz Flow, Scoring, and Shortcuts
+
+### Realtime Quiz Flow (Supabase)
+- `class_sessions.is_quiz_locked` controls whether students can submit answers.
+- When a called student answers Wrong, the teacher opens the quiz to the whole class. Realtime updates push live `quiz_stats` (A/B/C/D, total).
+- The called student is blocked for that open round via `class_sessions.blocked_student_id`.
+- When the teacher ends the question, correct answers are graded and the quiz is locked again; the current question index advances.
+
+### Per-question Points & Wrong Points
+- Configure per-question positive points and per-question wrong points (can be negative) in Edit Points.
+- Wrong points apply immediately to the initially called student when marked Wrong.
+- Import/Export format for per-question points uses one line per question:
+  - `positive, wrong` (comma/space/tab separated), e.g.:
+```
+1, 0
+2, -1
+3, 0
+4, -2
+5, 0
+```
+
+### Student-side Rules
+- When locked, students cannot select answers.
+- If a student was the initially called student and answered wrong, they are blocked from answering during that open round (even if unlocked).
+
+### Environment (Supabase)
+Add these to your `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Database expectations:
+- Table `class_sessions`: columns `is_quiz_locked boolean`, `quiz_stats jsonb`, `blocked_student_id uuid null`.
+- Table `answers`: `class_session_id`, `student_id`, `selected_answer`.
+- Table `students`: `score int`, `class_session_id`.
+- Realtime enabled for `class_sessions` and `students` updates.
+
+### Keyboard Shortcuts (Teacher)
+- R: Random pick (skip to next pick)
+- C: Mark Correct
+- W: Mark Wrong & open for class
+- L: Lock/Unlock quiz
+- E: End Question (grade + lock)
+- A: Reset Answers (clear `answers` rows for session)
+- S: Reset Scores (set all students in session to 0)
+
+> Open the “Shortcut” button (beside Light/Dark) to view these in-app.

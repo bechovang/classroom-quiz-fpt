@@ -460,8 +460,10 @@ const ClassroomContext = createContext<{
   resetQueue: (classId: string) => void
   createQuiz: (classId: string, question: string, options: { A: string; B: string; C: string; D: string }) => void
   submitAnswer: (classId: string, studentId: string, studentName: string, answer: "A" | "B" | "C" | "D") => void
+  clearMyAnswer: (classId: string, studentId: string) => Promise<void>
   awardPoints: (classId: string, studentId: string, points: number, description?: string) => void
   updateStudentScore: (classId: string, studentId: string, newScore: number) => void
+  adjustScoreByStudentCode: (classId: string, studentCode: string, delta: number) => Promise<void>
   setCorrectAnswer: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
   endQuiz: (classId: string) => void
   openQuizForEveryone: (classId: string, excludedStudentId?: string) => Promise<void>
@@ -829,6 +831,28 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const clearMyAnswer = async (classId: string, studentId: string) => {
+    try {
+      await import("@/lib/supabaseApi").then((m) => m.clearStudentAnswer(classId, studentId))
+      // Optimistic local removal from currentQuiz answers if present
+      const current = state.currentClass
+      if (current?.id === classId && current.currentQuiz) {
+        const filtered = current.currentQuiz.answers.filter((a) => a.studentId !== studentId)
+        const updatedClass = {
+          ...current,
+          currentQuiz: { ...current.currentQuiz, answers: filtered },
+          updatedAt: Date.now(),
+        }
+        const classes = state.classes.map((c) => (c.id === classId ? updatedClass : c))
+        dispatch({ type: "LOAD_CLASSES", payload: classes })
+        dispatch({ type: "SET_CURRENT_CLASS", payload: updatedClass })
+      }
+    } catch (error) {
+      console.error("Failed to clear answer:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to clear answer" })
+    }
+  }
+
   const awardPoints = async (
     classId: string,
     studentId: string,
@@ -863,6 +887,18 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const adjustScoreByStudentCode = async (classId: string, studentCode: string, delta: number) => {
+    try {
+      const updated = await import("@/lib/supabaseApi").then((m) => m.adjustScoreByStudentCode(classId, studentCode, delta))
+      if (!updated) return
+      const mapped = mapStudent(updated as unknown as SupabaseStudent)
+      dispatch({ type: "UPDATE_STUDENT", payload: { classId, student: mapped } })
+    } catch (error) {
+      console.error("Failed to adjust score by student code:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to adjust score" })
+    }
+  }
+
   const setCorrectAnswer = (classId: string, correctAnswer: "A" | "B" | "C" | "D") => {
     dispatch({ type: "SET_CORRECT_ANSWER", payload: { classId, correctAnswer } })
   }
@@ -873,12 +909,31 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const correct = current?.currentQuiz?.correctAnswer
     const currentIndex = current?.currentQuestionIndex ?? 0
     const points = current?.questionPoints?.[currentIndex] ?? 10
-    // Note: Wrong-point penalty is applied immediately to the initially called student when pressing "Wrong".
-    // Do NOT penalize other students at end of question.
+    // Penalize all students who chose incorrectly (called student likely already penalized on Wrong click)
     ;(async () => {
       try {
         if (correct) {
           await supaGradeQuizAndAwardPoints(classId, correct, points)
+        }
+        if (current?.currentQuiz && correct) {
+          const wrongIds = new Set(
+            current.currentQuiz.answers
+              .filter((a) => a.answer !== correct)
+              .map((a) => a.studentId),
+          )
+          const penalty = current.wrongPoints?.[currentIndex] ?? 0
+          if (penalty !== 0) {
+            await Promise.all(
+              current.students
+                .filter((s) => wrongIds.has(s.id))
+                .map(async (s) => {
+                  const newScore = s.score - penalty
+                  await supaUpdateStudentScore(classId, s.id, newScore)
+                  const updated: Student = { ...s, score: newScore }
+                  dispatch({ type: "UPDATE_STUDENT", payload: { classId, student: updated } })
+                }),
+            )
+          }
         }
         await supaLockCurrentQuiz(classId)
       } catch (e) {
@@ -967,7 +1022,9 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         createQuiz,
         submitAnswer,
         awardPoints,
+        clearMyAnswer,
         updateStudentScore,
+        adjustScoreByStudentCode,
         setCorrectAnswer,
         endQuiz,
         saveToLocalStorage,

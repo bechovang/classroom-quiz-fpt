@@ -30,8 +30,8 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
         const line = lines[i].trim()
         if (!line) continue
 
-        // Support both comma and tab separated values
-        const parts = line.split(/[,\t]/).map((part) => part.trim().replace(/"/g, ""))
+        // Strict TAB-separated values: Name<TAB>StudentId
+        const parts = line.split(/\t/).map((part) => part.trim().replace(/"/g, ""))
 
         if (parts.length >= 2 && parts[0] && parts[1]) {
           const student = {
@@ -44,7 +44,7 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
 
       return students
     } catch (err) {
-      throw new Error("Invalid CSV format")
+      throw new Error("Invalid TSV format")
     }
   }
 
@@ -52,13 +52,32 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
     try {
       setError("")
       const students = parseCsvData(csvData)
+      // Validate unique studentId (MSSV) in import and against current class
+      const inFileDup = new Set<string>()
+      const seen = new Set<string>()
+      for (const s of students) {
+        const code = (s.studentId || "").trim()
+        if (!code) continue
+        if (seen.has(code)) inFileDup.add(code)
+        seen.add(code)
+      }
+      const existing = new Set<string>((state.currentClass?.students || []).map((s) => s.studentId.trim()).filter(Boolean))
+      const conflict = [...seen].filter((code) => existing.has(code))
+      if (inFileDup.size > 0 || conflict.length > 0) {
+        const parts: string[] = []
+        if (inFileDup.size > 0) parts.push(`Trùng MSSV trong file: ${[...inFileDup].join(", ")}`)
+        if (conflict.length > 0) parts.push(`MSSV đã tồn tại trong lớp: ${conflict.join(", ")}`)
+        setError(parts.join(". "))
+        setPreviewStudents([])
+        return
+      }
       if (students.length === 0) {
         setError("No valid student data found")
         return
       }
       setPreviewStudents(students)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse CSV data")
+      setError(err instanceof Error ? err.message : "Failed to parse TSV data")
       setPreviewStudents([])
     }
   }
@@ -96,23 +115,23 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
         <DialogHeader>
           <DialogTitle>Import học sinh</DialogTitle>
           <DialogDescription>
-            Import danh sách học sinh từ dữ liệu CSV. Định dạng: Tên học sinh, Mã số sinh viên
+            Import danh sách học sinh từ TSV. Định dạng: Tên học sinh[TAB]Mã số sinh viên
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="csv-data">Dữ liệu CSV</Label>
+            <Label htmlFor="csv-data">Dữ liệu TSV</Label>
             <Textarea
               id="csv-data"
-              placeholder={`Nguyễn Văn An, SV001\nTrần Thị Bình, SV002\nLê Minh Cường, SV003\nPhạm Thị Dung, SV004`}
+              placeholder={`Nguyễn Văn An\tSV001\nTrần Thị Bình\tSV002\nLê Minh Cường\tSV003\nPhạm Thị Dung\tSV004`}
               value={csvData}
               onChange={(e) => setCsvData(e.target.value)}
               rows={6}
               disabled={isSubmitting}
             />
             <p className="text-xs text-muted-foreground">
-              Mỗi dòng chứa: Tên học sinh, Mã số sinh viên (phân cách bằng dấu phẩy)
+              Mỗi dòng chứa: Tên học sinh[TAB]Mã số sinh viên (phân cách bằng TAB)
             </p>
           </div>
 

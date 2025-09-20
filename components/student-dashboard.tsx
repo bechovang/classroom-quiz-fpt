@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Activity as ActivityIcon, LogOut, Lock, Unlock } from "lucide-react"
+import { ArrowLeft, Activity as ActivityIcon, LogOut, Lock, Unlock, Eraser } from "lucide-react"
 import { useState } from "react"
 import { Activity } from "@/types/classroom"
 
@@ -16,7 +16,7 @@ interface StudentDashboardProps {
 }
 
 export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
-  const { state, submitAnswer } = useClassroom()
+  const { state, submitAnswer, clearMyAnswer } = useClassroom()
   const { redirectToLogin } = useAuth()
   const [scanSuccess, setScanSuccess] = useState<{ points: number; timestamp: number } | null>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
@@ -129,6 +129,17 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
             <div className="mt-1 text-center text-xs text-muted-foreground">
               Câu hiện tại: {(state.currentClass.currentQuestionIndex ?? 0) + 1}
               {state.currentClass.questionPoints?.length ? `/${state.currentClass.questionPoints.length}` : ""} · Điểm nhận được: {state.currentClass.questionPoints?.[(state.currentClass.currentQuestionIndex ?? 0)] ?? 10}
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => state.currentClass && clearMyAnswer(state.currentClass.id, studentId)}
+                disabled={!state.currentClass || isDisabled}
+                className="h-8"
+              >
+                <Eraser className="w-3 h-3 mr-1" /> Xóa câu trả lời
+              </Button>
             </div>
             {state.currentClass.isQuizLocked && (
               <div className="text-center text-sm text-muted-foreground mt-1">Hiện không thể chọn đáp án</div>

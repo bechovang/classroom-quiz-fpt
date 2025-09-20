@@ -190,6 +190,43 @@ export async function resetAllScores(sessionId: string): Promise<void> {
   if (error) throw error
 }
 
+// Adjust a student's score by student_code (MSSV) within a session
+export async function adjustScoreByStudentCode(
+  sessionId: string,
+  studentCode: string,
+  delta: number,
+): Promise<SupabaseStudent | null> {
+  const { data: found, error: findErr } = await supabase
+    .from("students")
+    .select("id, created_at, student_name, student_code, score, class_session_id")
+    .eq("class_session_id", sessionId)
+    .eq("student_code", studentCode)
+    .maybeSingle()
+  if (findErr) throw findErr
+  if (!found) return null
+
+  const newScore = (found.score || 0) + delta
+  const { data, error } = await supabase
+    .from("students")
+    .update({ score: newScore })
+    .eq("id", found.id)
+    .eq("class_session_id", sessionId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as SupabaseStudent
+}
+
+// Delete a single student's answer row for the current session
+export async function clearStudentAnswer(sessionId: string, studentId: string): Promise<void> {
+  const { error } = await supabase
+    .from("answers")
+    .delete()
+    .eq("class_session_id", sessionId)
+    .eq("student_id", studentId)
+  if (error) throw error
+}
+
 export type QuizStats = { A: number; B: number; C: number; D: number; total: number }
 
 export function subscribeToQuizStats(

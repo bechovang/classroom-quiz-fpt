@@ -550,3 +550,56 @@ const measurePerformance = (name: string, fn: () => void) => {
 ---
 
 **For additional support, check the main README.md or create an issue in the repository.**
+
+## 🧩 Quiz Flow Maintenance Notes
+
+### Supabase Schema & Realtime
+- `class_sessions` must include:
+  - `is_quiz_locked boolean not null default true`
+  - `quiz_stats jsonb` (e.g., { A: 0, B: 0, C: 0, D: 0, total: 0 })
+  - `blocked_student_id uuid null`
+- `answers` rows aggregate into `quiz_stats` (trigger/function recommended) whenever answers change.
+- RLS should:
+  - Block inserts/updates to `answers` when `is_quiz_locked = true`.
+  - Allow teacher to update `is_quiz_locked`, `quiz_stats`, and `blocked_student_id`.
+- Realtime channels used:
+  - `postgres_changes` on `class_sessions` (UPDATE) filtered by `id` for `quiz_stats` and lock/blocked changes.
+  - `postgres_changes` on `students` (INSERT/UPDATE/DELETE) filtered by `class_session_id` for live student list/score updates.
+
+### RPC
+- `grade_and_award_points(session_id_param uuid, correct_answer_param char(1), points_param int)` updates correct students’ scores server-side.
+- Wrong points for the initially called student are applied from the client on Wrong click to keep UX snappy; you may add a server-side RPC if desired.
+
+### Frontend Contracts
+- Context methods:
+  - `openQuizForEveryone(sessionId, excludedStudentId?)` → unlocks, resets stats, and sets `blocked_student_id`.
+  - `lockQuiz(sessionId)` → sets `is_quiz_locked = true`.
+  - `clearAnswers(sessionId)` → deletes all `answers` for the session.
+  - `resetAllScores(sessionId)` → sets all `students.score = 0` for the session.
+  - `gradeQuizAndAwardPoints(sessionId, correctAnswer, points)` → RPC call.
+  - `setQuestionPoints(classId, points[])`, `setWrongPoints(classId, points[])` → persist per-question configuration in context.
+
+### Keyboard Shortcuts (Implementation)
+- Global keydown is registered in `components/dashboard-header.tsx`.
+- It triggers button clicks by element IDs to reuse existing logic:
+  - `shortcut-lock-toggle`, `shortcut-random-pick`, `shortcut-wrong`, `shortcut-correct`, `shortcut-end-quiz`, `shortcut-reset-answers`, `shortcut-reset-scores`
+  - A/B/C/D for selecting the correct answer in `TeamAssignmentDialog` via `shortcut-ans-A/B/C/D`
+- Ensure components keep these IDs if refactoring, or update the handler accordingly.
+
+### Import/Export Format (Edit Points)
+- Import accepts lines in the form: `positive, wrong`
+  - Delimiters: comma, space, or tab
+  - Example:
+```
+1, 0
+2, -1
+3, 0
+4, -2
+5, 0
+```
+- Export generates the same format. Both positive and wrong arrays are persisted in context.
+
+### Known Pitfalls
+- If blocked student behavior seems inconsistent, verify `blocked_student_id` updates are permitted by RLS and realtime is enabled.
+- Ensure `subscribeToQuizLock` dispatches both lock and blocked changes into context.
+- When adding new UI, keep keyboard focusable inputs in mind; the global handler ignores shortcuts if the user is typing in inputs/textareas.
