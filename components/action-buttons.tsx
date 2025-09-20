@@ -38,6 +38,12 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
 
   const handleWrongAnswer = async () => {
     try {
+      // Deduct wrong points for the currently called student immediately
+      const idx = state.currentClass?.currentQuestionIndex ?? 0
+      const penalty = state.currentClass?.wrongPoints?.[idx] ?? 0
+      if (penalty !== 0) {
+        await awardPoints(state.currentClass!.id, student.id, -penalty, "Wrong answer penalty")
+      }
       await openQuizForEveryone(state.currentClass!.id, student.id)
     } catch {}
     setShowTeamDialog(true)

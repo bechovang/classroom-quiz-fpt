@@ -16,11 +16,12 @@ interface PointsSystemProps {
 }
 
 export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
-  const { state, updateStudentScore, setQuestionPoints } = useClassroom()
+  const { state, updateStudentScore, setQuestionPoints, setWrongPoints } = useClassroom()
   const [numQuestions, setNumQuestions] = useState(5)
   const [questionPoints, setQuestionPointsLocal] = useState<number[]>([1, 1, 1, 1, 1])
   const [importText, setImportText] = useState("")
   const [showImportExport, setShowImportExport] = useState(false)
+  const [wrongPoints, setWrongPointsLocal] = useState<number[]>(state.currentClass?.wrongPoints || [])
 
   if (!state.currentClass) return null
 
@@ -28,6 +29,8 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
     if (!state.currentClass?.questionPoints) return
     setQuestionPointsLocal(state.currentClass.questionPoints)
     setNumQuestions(state.currentClass.questionPoints.length)
+    const wp = state.currentClass?.wrongPoints || Array(state.currentClass.questionPoints.length).fill(0)
+    setWrongPointsLocal(wp)
   }, [state.currentClass?.questionPoints])
 
   const handleNumQuestionsChange = (newNum: number) => {
@@ -38,13 +41,23 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
       .fill(0)
       .map((_, i) => questionPoints[i] || 1)
     setQuestionPointsLocal(newPoints)
+
+    const newWrong = Array(newNum)
+      .fill(0)
+      .map((_, i) => wrongPoints[i] ?? 0)
+    setWrongPointsLocal(newWrong)
   }
 
   const handleQuestionPointChange = (index: number, points: number) => {
-    if (points < 0) return
     const newPoints = [...questionPoints]
-    newPoints[index] = points
+    newPoints[index] = Number.isFinite(points) ? points : 0
     setQuestionPointsLocal(newPoints)
+  }
+
+  const handleWrongPointChange = (index: number, value: number) => {
+    const newArr = [...wrongPoints]
+    newArr[index] = Number.isFinite(value) ? value : 0
+    setWrongPointsLocal(newArr)
   }
 
   const handleImport = () => {
@@ -52,31 +65,49 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
       .trim()
       .split("\n")
       .filter((line) => line.trim() !== "")
-    const importedPoints = lines.map((line) => {
-      const point = Number.parseInt(line.trim())
-      return isNaN(point) ? 1 : Math.max(0, Math.min(100, point))
-    })
 
-    if (importedPoints.length > 0) {
-      setNumQuestions(importedPoints.length)
-      setQuestionPoints(importedPoints)
-      setImportText("")
-      setShowImportExport(false)
+    if (lines.length === 0) return
+
+    const pos: number[] = []
+    const neg: number[] = []
+
+    for (const raw of lines) {
+      const line = raw.trim()
+      // support comma or tab separated: positive,wrong
+      const parts = line.split(/[\s,\t]+/).filter(Boolean)
+      const p = Number.parseInt(parts[0] ?? "0")
+      const w = Number.parseInt(parts[1] ?? "0")
+      pos.push(isNaN(p) ? 0 : p)
+      neg.push(isNaN(w) ? 0 : w)
     }
+
+    setNumQuestions(pos.length)
+    setQuestionPointsLocal(pos)
+    setWrongPointsLocal(neg)
+    setQuestionPoints(state.currentClass!.id, pos)
+    setWrongPoints(state.currentClass!.id, neg)
+    setImportText("")
+    setShowImportExport(false)
   }
 
   const handleExport = () => {
-    const exportText = questionPoints.join("\n")
-    setImportText(exportText)
+    const lines: string[] = []
+    const maxLen = Math.max(questionPoints.length, wrongPoints.length)
+    for (let i = 0; i < maxLen; i++) {
+      const p = questionPoints[i] ?? 0
+      const w = wrongPoints[i] ?? 0
+      lines.push(`${p}, ${w}`)
+    }
+    setImportText(lines.join("\n"))
   }
 
   const handleApplyPoints = () => {
-    // Persist to context (and optionally to backend later)
     setQuestionPoints(state.currentClass!.id, questionPoints)
+    setWrongPoints(state.currentClass!.id, wrongPoints)
     onOpenChange(false)
   }
 
-  const questionRows = []
+  const questionRows: number[][] = []
   for (let i = 0; i < questionPoints.length; i += 5) {
     questionRows.push(questionPoints.slice(i, i + 5))
   }
@@ -151,13 +182,13 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="importText" className="text-sm font-medium">
-                    Nhập điểm (mỗi hàng là 1 điểm):
+                    Nhập điểm (mỗi hàng: Điểm cộng, Điểm trừ):
                   </Label>
                   <Textarea
                     id="importText"
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
-                    placeholder="1&#10;2&#10;3&#10;4&#10;5"
+                    placeholder="1, 0&#10;2, -1&#10;3, 0&#10;4, -2&#10;5, 0"
                     className="mt-2 h-32"
                   />
                 </div>
@@ -188,16 +219,24 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
                       return (
                         <div key={questionIndex} className="space-y-2">
                           <Label className="text-sm font-medium text-center block">Câu {questionIndex + 1}</Label>
-                          <div className="relative">
+                          <div className="relative space-y-2">
                             <Input
                               type="number"
                               value={points}
                               onChange={(e) =>
-                                handleQuestionPointChange(questionIndex, Number.parseInt(e.target.value) || 0)
+                                handleQuestionPointChange(
+                                  questionIndex,
+                                  Number.parseInt(e.target.value) || 0,
+                                )
                               }
                               className="text-center h-10 text-lg font-medium"
-                              min="0"
-                              max="100"
+                            />
+                            <Input
+                              type="number"
+                              value={wrongPoints[questionIndex] ?? 0}
+                              onChange={(e) => handleWrongPointChange(questionIndex, Number.parseInt(e.target.value))}
+                              className="text-center h-8 text-sm"
+                              placeholder="Điểm trừ (âm)"
                             />
                           </div>
                         </div>

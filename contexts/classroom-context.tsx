@@ -39,6 +39,7 @@ type ClassroomAction =
   | { type: "SET_QUIZ_LOCK"; payload: { classId: string; isLocked: boolean } }
   | { type: "SET_QUESTION_POINTS"; payload: { classId: string; points: number[] } }
   | { type: "SET_CURRENT_QUESTION"; payload: { classId: string; index: number } }
+  | { type: "SET_WRONG_POINTS"; payload: { classId: string; points: number[] } }
   | { type: "SET_BLOCKED_STUDENT"; payload: { classId: string; studentId: string | null } }
   | { type: "ADD_CLASS"; payload: ClassData }
   | { type: "ADD_STUDENT"; payload: { classId: string; student: Student } }
@@ -130,6 +131,19 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
       const updatedCurrentClass =
         state.currentClass?.id === action.payload.classId
           ? { ...state.currentClass, currentQuestionIndex: action.payload.index, updatedAt: Date.now() }
+          : state.currentClass
+      return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
+    }
+
+    case "SET_WRONG_POINTS": {
+      const updatedClasses = state.classes.map((cls) =>
+        cls.id === action.payload.classId
+          ? { ...cls, wrongPoints: action.payload.points, updatedAt: Date.now() }
+          : cls,
+      )
+      const updatedCurrentClass =
+        state.currentClass?.id === action.payload.classId
+          ? { ...state.currentClass, wrongPoints: action.payload.points, updatedAt: Date.now() }
           : state.currentClass
       return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
     }
@@ -454,6 +468,7 @@ const ClassroomContext = createContext<{
   lockQuiz: (classId: string) => Promise<void>
   setQuestionPoints: (classId: string, points: number[]) => void
   setCurrentQuestionIndex: (classId: string, index: number) => void
+  setWrongPoints: (classId: string, points: number[]) => void
   clearAnswers: (classId: string) => Promise<void>
   resetAllScores: (classId: string) => Promise<void>
   saveToLocalStorage: () => void
@@ -858,6 +873,8 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const correct = current?.currentQuiz?.correctAnswer
     const currentIndex = current?.currentQuestionIndex ?? 0
     const points = current?.questionPoints?.[currentIndex] ?? 10
+    // Note: Wrong-point penalty is applied immediately to the initially called student when pressing "Wrong".
+    // Do NOT penalize other students at end of question.
     ;(async () => {
       try {
         if (correct) {
@@ -903,6 +920,10 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     dispatch({ type: "SET_CURRENT_QUESTION", payload: { classId, index } })
   }
 
+  const setWrongPoints = (classId: string, points: number[]) => {
+    dispatch({ type: "SET_WRONG_POINTS", payload: { classId, points } })
+  }
+
   const clearAnswers = async (classId: string) => {
     try {
       await supaClearAnswers(classId)
@@ -930,6 +951,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         lockQuiz,
         setQuestionPoints,
         setCurrentQuestionIndex,
+        setWrongPoints,
         addClass,
         addStudent,
         addStudentsBulk,

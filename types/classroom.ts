@@ -64,6 +64,7 @@ export interface ClassData {
   questionPoints?: number[]
   currentQuestionIndex?: number
   blockedStudentId?: string | null
+  wrongPoints?: number[]
 }
 
 export type ViewMode = "teacher" | "student"
