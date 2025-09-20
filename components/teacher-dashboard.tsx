@@ -93,25 +93,25 @@ export function TeacherDashboard() {
                 </Button>
                 {state.currentClass && (
                   state.currentClass.isQuizLocked ? (
-                    <Button variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-8">
+                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-8">
                       <Unlock className="h-4 w-4 mr-2" />
                       Unlock Quiz
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => lockQuiz(state.currentClass!.id)} className="h-8">
+                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => lockQuiz(state.currentClass!.id)} className="h-8">
                       <Lock className="h-4 w-4 mr-2" />
                       Lock Quiz
                     </Button>
                   )
                 )}
                 {state.currentClass && (
-                  <Button variant="ghost" size="sm" onClick={() => clearAnswers(state.currentClass!.id)} className="h-8">
+                  <Button id="shortcut-reset-answers" variant="ghost" size="sm" onClick={() => clearAnswers(state.currentClass!.id)} className="h-8">
                     <Eraser className="h-4 w-4 mr-2" />
                     Reset Answers
                   </Button>
                 )}
                 {state.currentClass && (
-                  <Button variant="ghost" size="sm" onClick={() => resetAllScores(state.currentClass!.id)} className="h-8">
+                  <Button id="shortcut-reset-scores" variant="ghost" size="sm" onClick={() => resetAllScores(state.currentClass!.id)} className="h-8">
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Reset Scores
                   </Button>

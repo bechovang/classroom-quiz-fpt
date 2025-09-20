@@ -198,6 +198,7 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
           size="lg"
           onClick={handleRandomPick}
           disabled={isSpinning || availableStudents.length === 0}
+          id="shortcut-random-pick"
           className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200"
         >
           <Play className="w-5 h-5 mr-2" />

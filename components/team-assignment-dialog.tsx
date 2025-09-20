@@ -179,6 +179,7 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
                     isLocked && !pointsAwarded ? "hover:shadow-md" : ""
                   } ${isCorrect ? "border-green-500 bg-green-50" : isWrong ? "border-red-500 bg-red-50" : ""}`}
                   onClick={() => isLocked && !pointsAwarded && handleSelectCorrectAnswer(option.id)}
+                  id={`shortcut-ans-${option.id}`}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">

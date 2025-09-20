@@ -70,6 +70,7 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
               onClick={handleCorrectAnswer}
               disabled={isProcessing}
               className="flex-col h-24 bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              id="shortcut-correct"
             >
               <CheckCircle className="w-7 h-7 mb-2" />
               <span className="text-sm font-semibold">Correct</span>
@@ -82,6 +83,7 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
               onClick={handleWrongAnswer}
               disabled={isProcessing}
               className="flex-col h-24 bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              id="shortcut-wrong"
             >
               <XCircle className="w-7 h-7 mb-2" />
               <span className="text-sm font-semibold">Wrong</span>
@@ -98,6 +100,7 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
               onClick={handleSkip}
               disabled={isProcessing}
               className="flex-col h-24 bg-transparent hover:bg-muted/50 border-2 border-muted hover:border-primary/30 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              id="shortcut-random-pick"
             >
               <SkipForward className="w-7 h-7 mb-2" />
               <span className="text-sm font-semibold">Skip</span>

@@ -11,13 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { GraduationCap, LogOut, User, Moon, Sun } from "lucide-react"
+import { GraduationCap, LogOut, User, Moon, Sun, Keyboard } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useEffect } from "react"
 import { useState } from "react"
 
 export function DashboardHeader() {
   const { state } = useClassroom()
   const { state: authState, logout } = useAuth()
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode)
@@ -29,6 +32,58 @@ export function DashboardHeader() {
     // Force redirect to login page after logout
     window.location.href = '/'
   }
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = (target?.tagName || "").toLowerCase()
+      const inEditable =
+        tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable === true
+      if (inEditable) return
+      // Basic shortcuts
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === "l") {
+        // Toggle lock/unlock
+        const btn = document.getElementById("shortcut-lock-toggle") as HTMLButtonElement | null
+        btn?.click()
+        e.preventDefault()
+      }
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === "r") {
+        const btn = document.getElementById("shortcut-random-pick") as HTMLButtonElement | null
+        btn?.click()
+        e.preventDefault()
+      }
+      if (e.key.toLowerCase() === "w") {
+        const btn = document.getElementById("shortcut-wrong") as HTMLButtonElement | null
+        btn?.click()
+      }
+      if (e.key.toLowerCase() === "c") {
+        const btn = document.getElementById("shortcut-correct") as HTMLButtonElement | null
+        btn?.click()
+      }
+      if (["a", "b", "c", "d"].includes(e.key.toLowerCase())) {
+        const id = `shortcut-ans-${e.key.toUpperCase()}`
+        const card = document.getElementById(id) as HTMLElement | null
+        if (card) {
+          card.click()
+          e.preventDefault()
+        }
+      }
+      if (e.key.toLowerCase() === "e") {
+        const btn = document.getElementById("shortcut-end-quiz") as HTMLButtonElement | null
+        btn?.click()
+      }
+      if (e.key.toLowerCase() === "a") {
+        const btn = document.getElementById("shortcut-reset-answers") as HTMLButtonElement | null
+        btn?.click()
+      }
+      if (e.key.toLowerCase() === "s") {
+        const btn = document.getElementById("shortcut-reset-scores") as HTMLButtonElement | null
+        btn?.click()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [])
 
   return (
     <header className="h-16 border-b border-border bg-card/80 backdrop-blur-sm">
@@ -59,6 +114,10 @@ export function DashboardHeader() {
         <div className="flex items-center space-x-3">
           <Button variant="ghost" size="sm" onClick={toggleDarkMode} className="w-9 h-9 p-0">
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowShortcuts(true)} className="h-9 px-2">
+            <Keyboard className="w-4 h-4 mr-2" />
+            Shortcut
           </Button>
 
           <DropdownMenu>
@@ -93,6 +152,22 @@ export function DashboardHeader() {
           </DropdownMenu>
         </div>
       </div>
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Phím tắt nhanh</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Chọn ngẫu nhiên</span><span className="font-mono">R</span></div>
+            <div className="flex justify-between"><span>Đánh dấu đúng</span><span className="font-mono">C</span></div>
+            <div className="flex justify-between"><span>Đánh dấu sai & mở cho lớp</span><span className="font-mono">W</span></div>
+            <div className="flex justify-between"><span>Khóa/Mở quiz</span><span className="font-mono">Ctrl + Shift + L</span></div>
+            <div className="flex justify-between"><span>Kết thúc câu hỏi</span><span className="font-mono">E</span></div>
+            <div className="flex justify-between"><span>Reset đáp án</span><span className="font-mono">A</span></div>
+            <div className="flex justify-between"><span>Reset điểm</span><span className="font-mono">S</span></div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }
