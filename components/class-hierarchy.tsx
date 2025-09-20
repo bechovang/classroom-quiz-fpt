@@ -3,7 +3,8 @@
 import { useClassroom } from "@/contexts/classroom-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight, FolderOpen, Folder, User, Plus, Upload, Download, Pencil, Trash } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ChevronDown, ChevronRight, FolderOpen, Folder, User, Plus, Upload, Download, Pencil, Trash, Copy } from "lucide-react"
 import { useState } from "react"
 import { AddStudentDialog } from "@/components/add-student-dialog"
 import { ImportStudentsDialog } from "@/components/import-students-dialog"
@@ -13,6 +14,7 @@ export function ClassHierarchy() {
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set([state.currentClass?.id || ""]))
   const [showAddStudent, setShowAddStudent] = useState(false)
   const [showImportStudents, setShowImportStudents] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
 
   const escapeCsv = (value: string) => {
     const v = value ?? ""
@@ -22,10 +24,18 @@ export function ClassHierarchy() {
     return v
   }
 
-  const handleExport = () => {
+  const buildCsv = (includeHeader = true) => {
+    if (!state.currentClass) return ""
+    const header = includeHeader ? "Tên,MSSV,Điểm\n" : ""
+    const lines = state.currentClass.students.map(
+      (s) => `${escapeCsv(s.name)},${escapeCsv(s.studentId)},${s.score}`,
+    )
+    return header + lines.join("\n")
+  }
+
+  const handleDownload = () => {
     if (!state.currentClass) return
-    const lines = state.currentClass.students.map((s) => `${escapeCsv(s.name)},${escapeCsv(s.studentId)}`)
-    const content = lines.join("\n")
+    const content = buildCsv(true)
     const blob = new Blob([content], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -36,6 +46,21 @@ export function ClassHierarchy() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  const handleCopy = async () => {
+    if (!state.currentClass) return
+    const content = buildCsv(true)
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch (e) {
+      const textarea = document.createElement("textarea")
+      textarea.value = content
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+    }
   }
 
   const toggleClass = (classId: string) => {
@@ -100,7 +125,7 @@ export function ClassHierarchy() {
           <Button
             size="sm"
             variant="outline"
-            onClick={handleExport}
+            onClick={() => setShowExportDialog(true)}
             className="flex-1 h-8 text-xs bg-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             disabled={!state.currentClass || state.currentClass.students.length === 0}
           >
@@ -270,6 +295,22 @@ export function ClassHierarchy() {
       {/* Dialogs */}
       <AddStudentDialog open={showAddStudent} onOpenChange={setShowAddStudent} />
       <ImportStudentsDialog open={showImportStudents} onOpenChange={setShowImportStudents} />
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Xuất danh sách lớp</DialogTitle>
+            <DialogDescription>Chọn phương thức xuất để tải về hoặc sao chép dán vào Excel</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-2">
+            <Button onClick={() => { handleDownload(); setShowExportDialog(false) }} className="justify-start">
+              <Download className="h-4 w-4 mr-2" /> Tải xuống CSV
+            </Button>
+            <Button variant="outline" onClick={() => { handleCopy(); setShowExportDialog(false) }} className="justify-start">
+              <Copy className="h-4 w-4 mr-2" /> Sao chép vào Clipboard
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

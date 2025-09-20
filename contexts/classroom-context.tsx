@@ -16,6 +16,8 @@ import {
   openQuizForEveryone as supaOpenQuizForEveryone,
   lockCurrentQuiz as supaLockCurrentQuiz,
   gradeQuizAndAwardPoints as supaGradeQuizAndAwardPoints,
+  clearAnswers as supaClearAnswers,
+  resetAllScores as supaResetAllScores,
   updateStudentScore as supaUpdateStudentScore,
   type SupabaseClassSession,
   type SupabaseStudent,
@@ -35,6 +37,9 @@ type ClassroomAction =
   | { type: "SET_CURRENT_CLASS"; payload: ClassData }
   | { type: "SET_QUIZ_STATS"; payload: { classId: string; stats: QuizStats | null } }
   | { type: "SET_QUIZ_LOCK"; payload: { classId: string; isLocked: boolean } }
+  | { type: "SET_QUESTION_POINTS"; payload: { classId: string; points: number[] } }
+  | { type: "SET_CURRENT_QUESTION"; payload: { classId: string; index: number } }
+  | { type: "SET_BLOCKED_STUDENT"; payload: { classId: string; studentId: string | null } }
   | { type: "ADD_CLASS"; payload: ClassData }
   | { type: "ADD_STUDENT"; payload: { classId: string; student: Student } }
   | { type: "UPDATE_STUDENT"; payload: { classId: string; student: Student } }
@@ -102,6 +107,43 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
           ? { ...state.currentClass, isQuizLocked: action.payload.isLocked, updatedAt: Date.now() }
           : state.currentClass
 
+      return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
+    }
+
+    case "SET_QUESTION_POINTS": {
+      const updatedClasses = state.classes.map((cls) =>
+        cls.id === action.payload.classId ? { ...cls, questionPoints: action.payload.points, updatedAt: Date.now() } : cls,
+      )
+      const updatedCurrentClass =
+        state.currentClass?.id === action.payload.classId
+          ? { ...state.currentClass, questionPoints: action.payload.points, updatedAt: Date.now() }
+          : state.currentClass
+      return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
+    }
+
+    case "SET_CURRENT_QUESTION": {
+      const updatedClasses = state.classes.map((cls) =>
+        cls.id === action.payload.classId
+          ? { ...cls, currentQuestionIndex: action.payload.index, updatedAt: Date.now() }
+          : cls,
+      )
+      const updatedCurrentClass =
+        state.currentClass?.id === action.payload.classId
+          ? { ...state.currentClass, currentQuestionIndex: action.payload.index, updatedAt: Date.now() }
+          : state.currentClass
+      return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
+    }
+
+    case "SET_BLOCKED_STUDENT": {
+      const updatedClasses = state.classes.map((cls) =>
+        cls.id === action.payload.classId
+          ? { ...cls, blockedStudentId: action.payload.studentId, updatedAt: Date.now() }
+          : cls,
+      )
+      const updatedCurrentClass =
+        state.currentClass?.id === action.payload.classId
+          ? { ...state.currentClass, blockedStudentId: action.payload.studentId, updatedAt: Date.now() }
+          : state.currentClass
       return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
     }
 
@@ -408,8 +450,12 @@ const ClassroomContext = createContext<{
   updateStudentScore: (classId: string, studentId: string, newScore: number) => void
   setCorrectAnswer: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
   endQuiz: (classId: string) => void
-  openQuizForEveryone: (classId: string) => Promise<void>
+  openQuizForEveryone: (classId: string, excludedStudentId?: string) => Promise<void>
   lockQuiz: (classId: string) => Promise<void>
+  setQuestionPoints: (classId: string, points: number[]) => void
+  setCurrentQuestionIndex: (classId: string, index: number) => void
+  clearAnswers: (classId: string) => Promise<void>
+  resetAllScores: (classId: string) => Promise<void>
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
 } | null>(null)
@@ -454,9 +500,15 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     })
     quizStatsUnsubRef.current = unsub
 
-    const unsubLock = subscribeToQuizLock(currentId, (isLocked) => {
-      dispatch({ type: "SET_QUIZ_LOCK", payload: { classId: currentId, isLocked } })
-    })
+    const unsubLock = subscribeToQuizLock(
+      currentId,
+      (isLocked) => {
+        dispatch({ type: "SET_QUIZ_LOCK", payload: { classId: currentId, isLocked } })
+      },
+      (blockedId) => {
+        dispatch({ type: "SET_BLOCKED_STUDENT", payload: { classId: currentId, studentId: blockedId } })
+      },
+    )
     quizLockUnsubRef.current = unsubLock
 
     // Subscribe to students changes for current class
@@ -804,24 +856,30 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Grade and lock via Supabase
     const current = state.classes.find((c) => c.id === classId)
     const correct = current?.currentQuiz?.correctAnswer
+    const currentIndex = current?.currentQuestionIndex ?? 0
+    const points = current?.questionPoints?.[currentIndex] ?? 10
     ;(async () => {
       try {
         if (correct) {
-          // Default points: 10
-          await supaGradeQuizAndAwardPoints(classId, correct, 10)
+          await supaGradeQuizAndAwardPoints(classId, correct, points)
         }
         await supaLockCurrentQuiz(classId)
       } catch (e) {
         console.error("Failed to end quiz (grade/lock):", e)
       } finally {
         dispatch({ type: "END_QUIZ", payload: { classId } })
+        // Advance to next question index if configured
+        const nextIndex = (currentIndex || 0) + 1
+        if (state.currentClass?.id === classId) {
+          dispatch({ type: "SET_CURRENT_QUESTION", payload: { classId, index: nextIndex } })
+        }
       }
     })()
   }
 
-  const openQuizForEveryone = async (classId: string) => {
+  const openQuizForEveryone = async (classId: string, excludedStudentId?: string) => {
     try {
-      await supaOpenQuizForEveryone(classId)
+      await supaOpenQuizForEveryone(classId, excludedStudentId)
     } catch (error) {
       console.error("Failed to open quiz for everyone:", error)
       dispatch({ type: "SET_ERROR", payload: "Failed to open quiz" })
@@ -837,6 +895,32 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const setQuestionPoints = (classId: string, points: number[]) => {
+    dispatch({ type: "SET_QUESTION_POINTS", payload: { classId, points } })
+  }
+
+  const setCurrentQuestionIndex = (classId: string, index: number) => {
+    dispatch({ type: "SET_CURRENT_QUESTION", payload: { classId, index } })
+  }
+
+  const clearAnswers = async (classId: string) => {
+    try {
+      await supaClearAnswers(classId)
+    } catch (error) {
+      console.error("Failed to clear answers:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to clear answers" })
+    }
+  }
+
+  const resetAllScores = async (classId: string) => {
+    try {
+      await supaResetAllScores(classId)
+    } catch (error) {
+      console.error("Failed to reset scores:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to reset scores" })
+    }
+  }
+
   return (
     <ClassroomContext.Provider
       value={{
@@ -844,6 +928,8 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dispatch,
         openQuizForEveryone,
         lockQuiz,
+        setQuestionPoints,
+        setCurrentQuestionIndex,
         addClass,
         addStudent,
         addStudentsBulk,
@@ -864,6 +950,8 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         endQuiz,
         saveToLocalStorage,
         loadFromLocalStorage,
+        clearAnswers,
+        resetAllScores,
       }}
     >
       {children}
@@ -891,6 +979,7 @@ function mapSessionToClassData(session: SupabaseClassSession): ClassData {
     activities: [],
     quizStats: (session.quiz_stats as QuizStats) || undefined,
     isQuizLocked: !!session.is_quiz_locked,
+    blockedStudentId: (session as any).blocked_student_id ?? null,
     createdAt: new Date(session.created_at).getTime(),
     updatedAt: Date.now(),
   }

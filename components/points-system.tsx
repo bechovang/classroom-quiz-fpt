@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useClassroom } from "@/contexts/classroom-context"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -16,13 +16,19 @@ interface PointsSystemProps {
 }
 
 export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
-  const { state, updateStudentScore } = useClassroom()
+  const { state, updateStudentScore, setQuestionPoints } = useClassroom()
   const [numQuestions, setNumQuestions] = useState(5)
-  const [questionPoints, setQuestionPoints] = useState<number[]>([1, 1, 1, 1, 1])
+  const [questionPoints, setQuestionPointsLocal] = useState<number[]>([1, 1, 1, 1, 1])
   const [importText, setImportText] = useState("")
   const [showImportExport, setShowImportExport] = useState(false)
 
   if (!state.currentClass) return null
+
+  useEffect(() => {
+    if (!state.currentClass?.questionPoints) return
+    setQuestionPointsLocal(state.currentClass.questionPoints)
+    setNumQuestions(state.currentClass.questionPoints.length)
+  }, [state.currentClass?.questionPoints])
 
   const handleNumQuestionsChange = (newNum: number) => {
     if (newNum < 1 || newNum > 50) return
@@ -31,14 +37,14 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
     const newPoints = Array(newNum)
       .fill(0)
       .map((_, i) => questionPoints[i] || 1)
-    setQuestionPoints(newPoints)
+    setQuestionPointsLocal(newPoints)
   }
 
   const handleQuestionPointChange = (index: number, points: number) => {
     if (points < 0) return
     const newPoints = [...questionPoints]
     newPoints[index] = points
-    setQuestionPoints(newPoints)
+    setQuestionPointsLocal(newPoints)
   }
 
   const handleImport = () => {
@@ -65,12 +71,8 @@ export function PointsSystem({ open, onOpenChange }: PointsSystemProps) {
   }
 
   const handleApplyPoints = () => {
-    const totalPoints = questionPoints.reduce((sum, points) => sum + points, 0)
-
-    state.currentClass!.students.forEach((student) => {
-      updateStudentScore(state.currentClass!.id, student.id, student.score + totalPoints)
-    })
-
+    // Persist to context (and optionally to backend later)
+    setQuestionPoints(state.currentClass!.id, questionPoints)
     onOpenChange(false)
   }
 

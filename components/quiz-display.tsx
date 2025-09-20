@@ -26,6 +26,18 @@ export function QuizDisplay() {
     setCorrectAnswer(state.currentClass!.id, answer)
   }
 
+  const getPointsForCurrentQuestion = () => {
+    const pts = state.currentClass?.questionPoints || []
+    const idx = state.currentClass?.currentQuestionIndex ?? 0
+    return pts[idx] ?? 10
+  }
+
+  const getCurrentQuestionLabel = () => {
+    const idx = (state.currentClass?.currentQuestionIndex ?? 0) + 1
+    const total = state.currentClass?.questionPoints?.length
+    return total ? `${idx}/${total}` : `${idx}`
+  }
+
   const handleEndQuiz = () => {
     endQuiz(state.currentClass!.id)
     setSelectedCorrectAnswer(null)
@@ -55,6 +67,15 @@ export function QuizDisplay() {
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 <span>Đang diễn ra</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  Câu hiện tại: {getCurrentQuestionLabel()}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-1">
+                <Trophy className="h-4 w-4" />
+                <span>Điểm câu hiện tại: {getPointsForCurrentQuestion()}</span>
               </div>
               <div className="flex items-center gap-2">
                 {state.currentClass?.isQuizLocked ? (

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Shuffle, Play, RotateCcw, Zap } from "lucide-react"
+import { Shuffle, Play, RotateCcw, Zap, Trophy } from "lucide-react"
 import { useState } from "react"
 
 interface RandomPickerProps {
@@ -28,6 +28,10 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
   const totalStudents = state.currentClass.students.length
   const calledStudents = state.currentClass.students.filter((s) => s.isCalled).length
   const progressPercentage = totalStudents > 0 ? (calledStudents / totalStudents) * 100 : 0
+  const currentQuestionIndex = (state.currentClass.currentQuestionIndex ?? 0)
+  const totalQuestions = state.currentClass.questionPoints?.length
+  const currentQuestionLabel = totalQuestions ? `${currentQuestionIndex + 1}/${totalQuestions}` : `${currentQuestionIndex + 1}`
+  const currentQuestionPoints = state.currentClass.questionPoints?.[currentQuestionIndex] ?? 10
 
   const handleRandomPick = async () => {
     if (availableStudents.length === 0) return
@@ -81,6 +85,14 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
     <div className="space-y-6">
       {/* Progress Bar */}
       <div className="space-y-2">
+        <div className="flex justify-center">
+          <Badge className="bg-amber-100 text-amber-800 border-amber-200 px-3 py-1 rounded-full shadow-sm flex items-center gap-2">
+            <Trophy className="w-4 h-4" />
+            <span className="font-semibold">Câu hiện tại: {currentQuestionLabel}</span>
+            <span className="opacity-70">·</span>
+            <span>Điểm nhận: <span className="font-semibold">{currentQuestionPoints}</span></span>
+          </Badge>
+        </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Tiến độ lớp học</span>
           <span className="text-muted-foreground">

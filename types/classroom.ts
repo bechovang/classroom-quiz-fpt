@@ -61,6 +61,9 @@ export interface ClassData {
   classCode?: string
   quizStats?: QuizStats
   isQuizLocked?: boolean
+  questionPoints?: number[]
+  currentQuestionIndex?: number
+  blockedStudentId?: string | null
 }
 
 export type ViewMode = "teacher" | "student"

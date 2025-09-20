@@ -61,7 +61,7 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
       if (!state.currentClass) return
       if (isLocked) {
         // Unlock for everyone and reset stats
-        await openQuizForEveryone(state.currentClass.id)
+        await openQuizForEveryone(state.currentClass.id, student.id)
       } else {
         // Lock immediately
         await lockQuiz(state.currentClass.id)

@@ -6,6 +6,7 @@ export interface SupabaseClassSession {
   class_code: string
   is_quiz_locked: boolean
   quiz_stats: { A: number; B: number; C: number; D: number; total: number } | null
+  blocked_student_id?: string | null
 }
 
 export interface SupabaseStudent {
@@ -177,6 +178,18 @@ export async function submitAnswer(
   if (error) throw error
 }
 
+// Clear all answers for a session (does not change lock state)
+export async function clearAnswers(sessionId: string): Promise<void> {
+  const { error } = await supabase.from("answers").delete().eq("class_session_id", sessionId)
+  if (error) throw error
+}
+
+// Reset all scores to zero for a session's students
+export async function resetAllScores(sessionId: string): Promise<void> {
+  const { error } = await supabase.from("students").update({ score: 0 }).eq("class_session_id", sessionId)
+  if (error) throw error
+}
+
 export type QuizStats = { A: number; B: number; C: number; D: number; total: number }
 
 export function subscribeToQuizStats(
@@ -213,7 +226,8 @@ export function subscribeToQuizStats(
 // Subscribe to lock state only
 export function subscribeToQuizLock(
   sessionId: string,
-  onChange: (isLocked: boolean) => void,
+  onLockChange: (isLocked: boolean) => void,
+  onBlockedChange?: (blockedStudentId: string | null) => void,
 ) {
   const channel = supabase
     .channel(`class_session_lock_${sessionId}`)
@@ -222,7 +236,8 @@ export function subscribeToQuizLock(
       { event: "UPDATE", schema: "public", table: "class_sessions", filter: `id=eq.${sessionId}` },
       (payload) => {
         const record = payload.new as SupabaseClassSession
-        onChange(!!record?.is_quiz_locked)
+        onLockChange(!!record?.is_quiz_locked)
+        if (onBlockedChange) onBlockedChange((record as any)?.blocked_student_id ?? null)
       },
     )
     .subscribe()
@@ -231,10 +246,11 @@ export function subscribeToQuizLock(
   ;(async () => {
     const { data } = await supabase
       .from("class_sessions")
-      .select("is_quiz_locked")
+      .select("is_quiz_locked, blocked_student_id")
       .eq("id", sessionId)
       .single()
-    onChange(!!data?.is_quiz_locked)
+    onLockChange(!!data?.is_quiz_locked)
+    if (onBlockedChange) onBlockedChange((data as any)?.blocked_student_id ?? null)
   })()
 
   return () => {
@@ -243,7 +259,7 @@ export function subscribeToQuizLock(
 }
 
 // Open quiz for everyone: clear answers, unlock, reset stats to zero
-export async function openQuizForEveryone(sessionId: string): Promise<SupabaseClassSession> {
+export async function openQuizForEveryone(sessionId: string, excludedStudentId?: string): Promise<SupabaseClassSession> {
   // 1) Clear prior answers of this session
   const del = await supabase.from("answers").delete().eq("class_session_id", sessionId)
   if (del.error) throw del.error
@@ -254,6 +270,7 @@ export async function openQuizForEveryone(sessionId: string): Promise<SupabaseCl
     .update({
       is_quiz_locked: false,
       quiz_stats: { A: 0, B: 0, C: 0, D: 0, total: 0 },
+      blocked_student_id: excludedStudentId || null,
     })
     .eq("id", sessionId)
     .select()

@@ -38,7 +38,7 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
 
   const handleWrongAnswer = async () => {
     try {
-      await openQuizForEveryone(state.currentClass!.id)
+      await openQuizForEveryone(state.currentClass!.id, student.id)
     } catch {}
     setShowTeamDialog(true)
   }
@@ -67,10 +67,6 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
             >
               <CheckCircle className="w-7 h-7 mb-2" />
               <span className="text-sm font-semibold">Correct</span>
-              <span className="text-xs opacity-90 flex items-center">
-                <Trophy className="w-3 h-3 mr-1" />
-                +10 points
-              </span>
             </Button>
 
             {/* Wrong Answer Button */}
@@ -108,16 +104,7 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
 
           {/* Student Info */}
           <div className="mt-4 p-3 bg-muted/30 rounded-lg">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Current Score:</span>
-              <span className="font-semibold text-foreground">{student.score} points</span>
-            </div>
-            {student.team && (
-              <div className="flex items-center justify-between text-sm mt-1">
-                <span className="text-muted-foreground">Team:</span>
-                <span className="font-semibold text-foreground">Team {student.team}</span>
-              </div>
-            )}
+            {/* Current score display removed as requested; team section removed to avoid type issues */}
           </div>
         </CardContent>
       </Card>

@@ -9,13 +9,13 @@ import { ActionButtons } from "@/components/action-buttons"
 import { QuizDisplay } from "@/components/quiz-display"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, RotateCcw, Users, Target, Calculator, LogOut } from "lucide-react"
+import { Trophy, RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser } from "lucide-react"
 import { useState } from "react"
 import { ScoringSystem } from "@/components/scoring-system"
 import { PointsSystem } from "@/components/points-system"
 
 export function TeacherDashboard() {
-  const { state, resetQueue } = useClassroom()
+  const { state, resetQueue, lockQuiz, openQuizForEveryone, clearAnswers, resetAllScores } = useClassroom()
   const { logout } = useAuth()
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [showScoringSystem, setShowScoringSystem] = useState(false)
@@ -56,7 +56,7 @@ export function TeacherDashboard() {
   }
 
   const currentClass = state.currentClass
-  const activeStudents = currentClass.students.filter((s) => !s.isAbsent)
+  const activeStudents = currentClass.students
   const totalScore = currentClass.students.reduce((sum, s) => sum + s.score, 0)
 
   return (
@@ -91,6 +91,31 @@ export function TeacherDashboard() {
                   <Calculator className="h-4 w-4 mr-2" />
                   Edit Points
                 </Button>
+                {state.currentClass && (
+                  state.currentClass.isQuizLocked ? (
+                    <Button variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-8">
+                      <Unlock className="h-4 w-4 mr-2" />
+                      Unlock Quiz
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => lockQuiz(state.currentClass!.id)} className="h-8">
+                      <Lock className="h-4 w-4 mr-2" />
+                      Lock Quiz
+                    </Button>
+                  )
+                )}
+                {state.currentClass && (
+                  <Button variant="ghost" size="sm" onClick={() => clearAnswers(state.currentClass!.id)} className="h-8">
+                    <Eraser className="h-4 w-4 mr-2" />
+                    Reset Answers
+                  </Button>
+                )}
+                {state.currentClass && (
+                  <Button variant="ghost" size="sm" onClick={() => resetAllScores(state.currentClass!.id)} className="h-8">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset Scores
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={handleResetQueue} className="h-8">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset
