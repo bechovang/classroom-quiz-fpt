@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Activity as ActivityIcon, LogOut } from "lucide-react"
+import { ArrowLeft, Activity as ActivityIcon, LogOut, Lock, Unlock } from "lucide-react"
 import { useState } from "react"
 import { Activity } from "@/types/classroom"
 
@@ -39,6 +39,7 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
 
   const handleAnswerSelect = async (answer: string) => {
     if (!state.currentClass) return
+    if (state.currentClass.isQuizLocked) return
     setClickedButton(answer)
     setSelectedAnswer(answer)
 
@@ -47,10 +48,6 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
       if (s) await submitAnswer(state.currentClass.id, s.id, s.name, answer as "A" | "B" | "C" | "D")
     } finally {
       setTimeout(() => setClickedButton(null), 1000)
-      setTimeout(() => {
-        setScanSuccess({ points: 10, timestamp: Date.now() })
-        setTimeout(() => setScanSuccess(null), 3000)
-      }, 300)
     }
   }
 
@@ -112,12 +109,27 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="text-center">Chọn đáp án</CardTitle>
+            <div className="mt-1 flex items-center justify-center">
+              {state.currentClass.isQuizLocked ? (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                  <Lock className="w-3 h-3" /> Quiz đang khóa
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  <Unlock className="w-3 h-3" /> Quiz đang mở
+                </span>
+              )}
+            </div>
+            {state.currentClass.isQuizLocked && (
+              <div className="text-center text-sm text-muted-foreground mt-1">Hiện không thể chọn đáp án</div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <Button
                 variant="outline"
                 onClick={() => handleAnswerSelect("A")}
+                disabled={!!state.currentClass.isQuizLocked}
                 className={`h-20 text-xl font-bold transition-all duration-300 transform
                   bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800
                   ${selectedAnswer === "A" ? "ring-2 ring-red-500 bg-red-100" : ""}
@@ -136,6 +148,7 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
               <Button
                 variant="outline"
                 onClick={() => handleAnswerSelect("B")}
+                disabled={!!state.currentClass.isQuizLocked}
                 className={`h-20 text-xl font-bold transition-all duration-300 transform
                   bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 hover:text-blue-800
                   ${selectedAnswer === "B" ? "ring-2 ring-blue-500 bg-blue-100" : ""}
@@ -154,6 +167,7 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
               <Button
                 variant="outline"
                 onClick={() => handleAnswerSelect("C")}
+                disabled={!!state.currentClass.isQuizLocked}
                 className={`h-20 text-xl font-bold transition-all duration-300 transform
                   bg-green-50 hover:bg-green-100 border-green-200 text-green-700 hover:text-green-800
                   ${selectedAnswer === "C" ? "ring-2 ring-green-500 bg-green-100" : ""}
@@ -172,6 +186,7 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
               <Button
                 variant="outline"
                 onClick={() => handleAnswerSelect("D")}
+                disabled={!!state.currentClass.isQuizLocked}
                 className={`h-20 text-xl font-bold transition-all duration-300 transform
                   bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-700 hover:text-yellow-800
                   ${selectedAnswer === "D" ? "ring-2 ring-yellow-500 bg-yellow-100" : ""}

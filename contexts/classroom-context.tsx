@@ -12,6 +12,10 @@ import {
   listClassSessions,
   submitAnswer as supaSubmitAnswer,
   subscribeToQuizStats,
+  subscribeToQuizLock,
+  openQuizForEveryone as supaOpenQuizForEveryone,
+  lockCurrentQuiz as supaLockCurrentQuiz,
+  gradeQuizAndAwardPoints as supaGradeQuizAndAwardPoints,
   updateStudentScore as supaUpdateStudentScore,
   type SupabaseClassSession,
   type SupabaseStudent,
@@ -30,6 +34,7 @@ type ClassroomAction =
   | { type: "LOAD_CLASSES"; payload: ClassData[] }
   | { type: "SET_CURRENT_CLASS"; payload: ClassData }
   | { type: "SET_QUIZ_STATS"; payload: { classId: string; stats: QuizStats | null } }
+  | { type: "SET_QUIZ_LOCK"; payload: { classId: string; isLocked: boolean } }
   | { type: "ADD_CLASS"; payload: ClassData }
   | { type: "ADD_STUDENT"; payload: { classId: string; student: Student } }
   | { type: "UPDATE_STUDENT"; payload: { classId: string; student: Student } }
@@ -86,6 +91,18 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
         classes: updatedClasses,
         currentClass: updatedCurrentClass,
       }
+    }
+
+    case "SET_QUIZ_LOCK": {
+      const updatedClasses = state.classes.map((cls) =>
+        cls.id === action.payload.classId ? { ...cls, isQuizLocked: action.payload.isLocked, updatedAt: Date.now() } : cls,
+      )
+      const updatedCurrentClass =
+        state.currentClass?.id === action.payload.classId
+          ? { ...state.currentClass, isQuizLocked: action.payload.isLocked, updatedAt: Date.now() }
+          : state.currentClass
+
+      return { ...state, classes: updatedClasses, currentClass: updatedCurrentClass }
     }
 
     case "ADD_CLASS": {
@@ -377,6 +394,7 @@ const ClassroomContext = createContext<{
   addStudent: (classId: string, name: string, studentId: string) => void
   addStudentsBulk: (classId: string, students: { name: string; studentId: string }[]) => void
   selectClass: (classId: string) => Promise<void>
+  selectClassForStudent: (classId: string) => Promise<void>
   renameClass: (classId: string, newName: string) => void
   deleteClass: (classId: string) => Promise<void>
   updateStudent: (classId: string, student: Student) => Promise<void>
@@ -390,6 +408,8 @@ const ClassroomContext = createContext<{
   updateStudentScore: (classId: string, studentId: string, newScore: number) => void
   setCorrectAnswer: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
   endQuiz: (classId: string) => void
+  openQuizForEveryone: (classId: string) => Promise<void>
+  lockQuiz: (classId: string) => Promise<void>
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
 } | null>(null)
@@ -399,6 +419,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const quizStatsUnsubRef = useRef<null | (() => void)>(null)
   const studentsUnsubRef = useRef<null | (() => void)>(null)
+  const quizLockUnsubRef = useRef<null | (() => void)>(null)
 
   useEffect(() => {
     loadFromLocalStorage()
@@ -416,6 +437,10 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       quizStatsUnsubRef.current()
       quizStatsUnsubRef.current = null
     }
+    if (quizLockUnsubRef.current) {
+      quizLockUnsubRef.current()
+      quizLockUnsubRef.current = null
+    }
     if (studentsUnsubRef.current) {
       studentsUnsubRef.current()
       studentsUnsubRef.current = null
@@ -428,6 +453,11 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       dispatch({ type: "SET_QUIZ_STATS", payload: { classId: currentId, stats } })
     })
     quizStatsUnsubRef.current = unsub
+
+    const unsubLock = subscribeToQuizLock(currentId, (isLocked) => {
+      dispatch({ type: "SET_QUIZ_LOCK", payload: { classId: currentId, isLocked } })
+    })
+    quizLockUnsubRef.current = unsubLock
 
     // Subscribe to students changes for current class
     const channel = supabase
@@ -465,6 +495,10 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (quizStatsUnsubRef.current) {
         quizStatsUnsubRef.current()
         quizStatsUnsubRef.current = null
+      }
+      if (quizLockUnsubRef.current) {
+        quizLockUnsubRef.current()
+        quizLockUnsubRef.current = null
       }
       if (studentsUnsubRef.current) {
         studentsUnsubRef.current()
@@ -536,6 +570,37 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch (error) {
       console.error("Failed to select class:", error)
       dispatch({ type: "SET_ERROR", payload: "Failed to switch class" })
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false })
+    }
+  }
+
+  // Lightweight selector for student mode: load one class by id and subscribe
+  const selectClassForStudent = async (classId: string) => {
+    dispatch({ type: "SET_LOADING", payload: true })
+    try {
+      const base = state.classes.find((c) => c.id === classId)
+      let sessionBase: ClassData | undefined = base
+      if (!sessionBase) {
+        const session = await import("@/lib/supabaseApi").then((m) => m.getClassSessionById(classId))
+        if (session) {
+          sessionBase = mapSessionToClassData(session)
+          dispatch({ type: "ADD_CLASS", payload: sessionBase })
+        }
+      }
+      if (!sessionBase) return
+
+      const students = await fetchStudents(classId)
+      const mappedStudents = students.map(mapStudent)
+      const withStudents: ClassData = { ...sessionBase, students: mappedStudents, updatedAt: Date.now() }
+      const newClasses = (state.classes.find((c) => c.id === withStudents.id)
+        ? state.classes.map((c) => (c.id === withStudents.id ? withStudents : c))
+        : [...state.classes, withStudents])
+      dispatch({ type: "LOAD_CLASSES", payload: newClasses })
+      dispatch({ type: "SET_CURRENT_CLASS", payload: withStudents })
+    } catch (error) {
+      console.error("Failed to load class for student:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to load class" })
     } finally {
       dispatch({ type: "SET_LOADING", payload: false })
     }
@@ -685,6 +750,9 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     answer: "A" | "B" | "C" | "D",
   ) => {
     try {
+      if (state.currentClass?.id === classId && state.currentClass?.isQuizLocked) {
+        throw new Error("Quiz is locked")
+      }
       await supaSubmitAnswer(classId, studentId, answer)
       const quizAnswer: QuizAnswer = { studentId, studentName, answer, timestamp: Date.now() }
       dispatch({ type: "SUBMIT_ANSWER", payload: { classId, answer: quizAnswer } })
@@ -733,7 +801,40 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }
 
   const endQuiz = (classId: string) => {
-    dispatch({ type: "END_QUIZ", payload: { classId } })
+    // Grade and lock via Supabase
+    const current = state.classes.find((c) => c.id === classId)
+    const correct = current?.currentQuiz?.correctAnswer
+    ;(async () => {
+      try {
+        if (correct) {
+          // Default points: 10
+          await supaGradeQuizAndAwardPoints(classId, correct, 10)
+        }
+        await supaLockCurrentQuiz(classId)
+      } catch (e) {
+        console.error("Failed to end quiz (grade/lock):", e)
+      } finally {
+        dispatch({ type: "END_QUIZ", payload: { classId } })
+      }
+    })()
+  }
+
+  const openQuizForEveryone = async (classId: string) => {
+    try {
+      await supaOpenQuizForEveryone(classId)
+    } catch (error) {
+      console.error("Failed to open quiz for everyone:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to open quiz" })
+    }
+  }
+
+  const lockQuiz = async (classId: string) => {
+    try {
+      await supaLockCurrentQuiz(classId)
+    } catch (error) {
+      console.error("Failed to lock quiz:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to lock quiz" })
+    }
   }
 
   return (
@@ -741,6 +842,8 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       value={{
         state,
         dispatch,
+        openQuizForEveryone,
+        lockQuiz,
         addClass,
         addStudent,
         addStudentsBulk,
@@ -749,6 +852,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateStudent,
         deleteStudent,
         selectClass,
+        selectClassForStudent,
         callRandomStudent,
         shuffleQueue,
         resetQueue,
@@ -786,6 +890,7 @@ function mapSessionToClassData(session: SupabaseClassSession): ClassData {
     quizHistory: [],
     activities: [],
     quizStats: (session.quiz_stats as QuizStats) || undefined,
+    isQuizLocked: !!session.is_quiz_locked,
     createdAt: new Date(session.created_at).getTime(),
     updatedAt: Date.now(),
   }

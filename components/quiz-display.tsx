@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useClassroom } from "@/contexts/classroom-context"
 import { QRCodeSVG } from "qrcode.react"
-import { CheckCircle, Users, Clock, Trophy } from "lucide-react"
+import { CheckCircle, Users, Clock, Trophy, Lock, Unlock } from "lucide-react"
 
 export function QuizDisplay() {
-  const { state, setCorrectAnswer, endQuiz } = useClassroom()
+  const { state, setCorrectAnswer, endQuiz, lockQuiz, openQuizForEveryone } = useClassroom()
   const [selectedCorrectAnswer, setSelectedCorrectAnswer] = useState<"A" | "B" | "C" | "D" | null>(null)
 
   if (!state.currentClass?.currentQuiz) {
@@ -55,6 +55,26 @@ export function QuizDisplay() {
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 <span>Đang diễn ra</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {state.currentClass?.isQuizLocked ? (
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1">
+                    <Lock className="h-3 w-3" /> Locked
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200 flex items-center gap-1">
+                    <Unlock className="h-3 w-3" /> Open
+                  </Badge>
+                )}
+                {state.currentClass?.isQuizLocked ? (
+                  <Button size="sm" variant="outline" onClick={() => openQuizForEveryone(state.currentClass!.id)}>
+                    <Unlock className="h-4 w-4 mr-1" /> Mở cho cả lớp
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => lockQuiz(state.currentClass!.id)}>
+                    <Lock className="h-4 w-4 mr-1" /> Khóa ngay
+                  </Button>
+                )}
               </div>
             </div>
           </div>

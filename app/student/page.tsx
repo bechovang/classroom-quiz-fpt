@@ -6,12 +6,21 @@ import { AuthGuard } from "@/components/auth/auth-guard"
 import { StudentDashboard } from "@/components/student-dashboard"
 import { StudentSelector } from "@/components/student-selector"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 
 function StudentPage() {
   const { state: authState } = useAuth()
-  const { state } = useClassroom()
+  const { state, selectClassForStudent } = useClassroom()
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const classIdFromQuery = useMemo(() => searchParams.get("class") || undefined, [searchParams])
+
+  useEffect(() => {
+    if (classIdFromQuery) {
+      selectClassForStudent(classIdFromQuery)
+    }
+  }, [classIdFromQuery])
 
   if (state.isLoading) {
     return (

@@ -50,6 +50,17 @@ export async function getClassSessionByCode(classCode: string): Promise<Supabase
   return (data as SupabaseClassSession) || null
 }
 
+export async function getClassSessionById(sessionId: string): Promise<SupabaseClassSession | null> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id, created_at, class_code, is_quiz_locked, quiz_stats")
+    .eq("id", sessionId)
+    .maybeSingle()
+
+  if (error) throw error
+  return (data as SupabaseClassSession) || null
+}
+
 export async function fetchStudents(sessionId: string): Promise<SupabaseStudent[]> {
   const { data, error } = await supabase
     .from("students")
@@ -147,6 +158,15 @@ export async function submitAnswer(
   studentId: string,
   selected: "A" | "B" | "C" | "D",
 ): Promise<void> {
+  // Verify lock state from server to prevent race conditions if UI hasn't updated yet
+  const lockRes = await supabase
+    .from("class_sessions")
+    .select("is_quiz_locked")
+    .eq("id", sessionId)
+    .single()
+  if (lockRes.error) throw lockRes.error
+  if (lockRes.data?.is_quiz_locked) throw new Error("Quiz is locked")
+
   const { error } = await supabase
     .from("answers")
     .upsert(
@@ -188,6 +208,88 @@ export function subscribeToQuizStats(
   return () => {
     supabase.removeChannel(channel)
   }
+}
+
+// Subscribe to lock state only
+export function subscribeToQuizLock(
+  sessionId: string,
+  onChange: (isLocked: boolean) => void,
+) {
+  const channel = supabase
+    .channel(`class_session_lock_${sessionId}`)
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "class_sessions", filter: `id=eq.${sessionId}` },
+      (payload) => {
+        const record = payload.new as SupabaseClassSession
+        onChange(!!record?.is_quiz_locked)
+      },
+    )
+    .subscribe()
+
+  // Seed
+  ;(async () => {
+    const { data } = await supabase
+      .from("class_sessions")
+      .select("is_quiz_locked")
+      .eq("id", sessionId)
+      .single()
+    onChange(!!data?.is_quiz_locked)
+  })()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+// Open quiz for everyone: clear answers, unlock, reset stats to zero
+export async function openQuizForEveryone(sessionId: string): Promise<SupabaseClassSession> {
+  // 1) Clear prior answers of this session
+  const del = await supabase.from("answers").delete().eq("class_session_id", sessionId)
+  if (del.error) throw del.error
+
+  // 2) Unlock and reset stats
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .update({
+      is_quiz_locked: false,
+      quiz_stats: { A: 0, B: 0, C: 0, D: 0, total: 0 },
+    })
+    .eq("id", sessionId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as SupabaseClassSession
+}
+
+// Lock the current quiz to stop receiving more answers
+export async function lockCurrentQuiz(sessionId: string): Promise<SupabaseClassSession> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .update({ is_quiz_locked: true })
+    .eq("id", sessionId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as SupabaseClassSession
+}
+
+// Grade quiz and award points using a Postgres function (RPC)
+export async function gradeQuizAndAwardPoints(
+  sessionId: string,
+  correctAnswer: "A" | "B" | "C" | "D",
+  points: number,
+): Promise<{ updated_student_id: string; new_score: number }[]> {
+  const { data, error } = await supabase.rpc("grade_and_award_points", {
+    session_id_param: sessionId,
+    correct_answer_param: correctAnswer,
+    points_param: points,
+  })
+
+  if (error) throw error
+  return (data || []) as { updated_student_id: string; new_score: number }[]
 }
 
 function generateClassCode(): string {

@@ -60,6 +60,7 @@ export interface ClassData {
   updatedAt: number
   classCode?: string
   quizStats?: QuizStats
+  isQuizLocked?: boolean
 }
 
 export type ViewMode = "teacher" | "student"

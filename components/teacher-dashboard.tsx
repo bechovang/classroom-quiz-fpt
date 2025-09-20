@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { ClassHierarchy } from "@/components/class-hierarchy"
 import { RandomPicker } from "@/components/random-picker"
 import { ActionButtons } from "@/components/action-buttons"
+import { QuizDisplay } from "@/components/quiz-display"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, RotateCcw, Users, Target, Calculator, LogOut } from "lucide-react"
@@ -107,6 +108,8 @@ export function TeacherDashboard() {
               <RandomPicker selectedStudent={selectedStudent} onStudentSelected={setSelectedStudent} />
 
               <ActionButtons selectedStudent={selectedStudent} onActionComplete={() => setSelectedStudent(null)} />
+
+              <QuizDisplay />
             </div>
           </div>
         </div>

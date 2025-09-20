@@ -13,7 +13,7 @@ interface ActionButtonsProps {
 }
 
 export function ActionButtons({ selectedStudent, onActionComplete }: ActionButtonsProps) {
-  const { state, awardPoints } = useClassroom()
+  const { state, awardPoints, openQuizForEveryone } = useClassroom()
   const [showTeamDialog, setShowTeamDialog] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -36,7 +36,10 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
     }
   }
 
-  const handleWrongAnswer = () => {
+  const handleWrongAnswer = async () => {
+    try {
+      await openQuizForEveryone(state.currentClass!.id)
+    } catch {}
     setShowTeamDialog(true)
   }
 

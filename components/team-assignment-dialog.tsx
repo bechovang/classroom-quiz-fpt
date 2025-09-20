@@ -25,7 +25,7 @@ interface AnswerOption {
 }
 
 export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }: OpportunitySharingDialogProps) {
-  const { state, dispatch } = useClassroom()
+  const { state, dispatch, lockQuiz, openQuizForEveryone } = useClassroom()
   const [isLocked, setIsLocked] = useState(false)
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null)
   const [pointsAwarded, setPointsAwarded] = useState(false)
@@ -48,10 +48,29 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
     ])
   }, [state.currentClass?.quizStats])
 
+  // Sync local lock state with realtime isQuizLocked
+  useEffect(() => {
+    if (!open) return
+    setIsLocked(!!state.currentClass?.isQuizLocked)
+  }, [open, state.currentClass?.isQuizLocked])
+
   // Removed fake random updates; counts now come from Supabase realtime (quiz_stats)
 
-  const handleToggleLock = () => {
-    setIsLocked(!isLocked)
+  const handleToggleLock = async () => {
+    try {
+      if (!state.currentClass) return
+      if (isLocked) {
+        // Unlock for everyone and reset stats
+        await openQuizForEveryone(state.currentClass.id)
+      } else {
+        // Lock immediately
+        await lockQuiz(state.currentClass.id)
+      }
+      // Optimistic update; realtime will confirm
+      setIsLocked((v) => !v)
+    } catch (e) {
+      console.error("Failed to toggle lock:", e)
+    }
   }
 
   const handleSelectCorrectAnswer = (answerId: string) => {
