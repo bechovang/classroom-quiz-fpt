@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Activity as ActivityIcon, LogOut, Lock, Unlock, Eraser } from "lucide-react"
 import { useState } from "react"
+import { toast } from "@/hooks/use-toast"
 import { Activity } from "@/types/classroom"
 
 interface StudentDashboardProps {
@@ -134,7 +135,17 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => state.currentClass && clearMyAnswer(state.currentClass.id, studentId)}
+                onClick={async () => {
+                  if (!state.currentClass || isDisabled) return
+                  try {
+                    await clearMyAnswer(state.currentClass.id, studentId)
+                    setSelectedAnswer(null)
+                    setClickedButton(null)
+                    toast({ title: "Đã xóa câu trả lời", description: "Bạn có thể chọn lại đáp án." })
+                  } catch (e) {
+                    toast({ title: "Xóa thất bại", description: "Vui lòng thử lại." })
+                  }
+                }}
                 disabled={!state.currentClass || isDisabled}
                 className="h-8"
               >
