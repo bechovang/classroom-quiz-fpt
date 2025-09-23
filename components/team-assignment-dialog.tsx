@@ -25,9 +25,9 @@ interface AnswerOption {
 }
 
 export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }: OpportunitySharingDialogProps) {
-  const { state, dispatch, lockQuiz, openQuizForEveryone } = useClassroom()
+  const { state, setCorrectAnswer, endQuiz, lockQuiz, openQuizForEveryone } = useClassroom()
   const [isLocked, setIsLocked] = useState(false)
-  const [correctAnswer, setCorrectAnswer] = useState<string | null>(null)
+  const [correctAnswer, setLocalCorrectAnswer] = useState<string | null>(null)
   const [pointsAwarded, setPointsAwarded] = useState(false)
 
   const [answerOptions, setAnswerOptions] = useState<AnswerOption[]>([
@@ -74,40 +74,19 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
   }
 
   const handleSelectCorrectAnswer = (answerId: string) => {
-    if (!isLocked) return
-
-    setCorrectAnswer(answerId)
-
-    // Award points to students who chose correctly, deduct from others
-    const correctOption = answerOptions.find((opt) => opt.id === answerId)
-    if (correctOption && state.currentClass) {
-      state.currentClass.students.forEach((student) => {
-        // In real implementation, check if student selected this answer
-        const selectedCorrectly = Math.random() > 0.5 // Simulate selection
-        const pointChange = selectedCorrectly ? 10 : -5
-
-        dispatch({
-          type: "UPDATE_SCORE",
-          payload: {
-            classId: state.currentClass!.id,
-            studentId: student.id,
-            score: student.score + pointChange,
-          },
-        })
-      })
-    }
-
+    if (!isLocked || !state.currentClass) return
+    // Use the real flow: set correct answer then end quiz (RPC awards points, context handles wrong points)
+    setLocalCorrectAnswer(answerId)
+    setCorrectAnswer(state.currentClass.id, answerId as any)
+    endQuiz(state.currentClass.id)
     setPointsAwarded(true)
-
-    // Auto close after showing results
     setTimeout(() => {
       onOpenChange(false)
       onComplete()
-      // Reset state
       setIsLocked(false)
-      setCorrectAnswer(null)
+      setLocalCorrectAnswer(null)
       setPointsAwarded(false)
-    }, 3000)
+    }, 1200)
   }
 
   const totalSelections = state.currentClass?.quizStats?.total || answerOptions.reduce((sum, option) => sum + option.count, 0)

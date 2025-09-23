@@ -40,9 +40,10 @@ export function ActionButtons({ selectedStudent, onActionComplete }: ActionButto
     try {
       // Deduct wrong points for the currently called student immediately
       const idx = state.currentClass?.currentQuestionIndex ?? 0
-      const penalty = state.currentClass?.wrongPoints?.[idx] ?? 0
-      if (penalty !== 0) {
-        await awardPoints(state.currentClass!.id, student.id, -penalty, "Wrong answer penalty")
+      const wrongDelta = state.currentClass?.wrongPoints?.[idx] ?? 0
+      if (wrongDelta !== 0) {
+        // wrongDelta có thể âm (trừ điểm) hoặc dương (cộng điểm)
+        await awardPoints(state.currentClass!.id, student.id, wrongDelta, "Wrong answer penalty")
       }
       await openQuizForEveryone(state.currentClass!.id, student.id)
     } catch {}

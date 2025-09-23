@@ -921,13 +921,13 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               .filter((a) => a.answer !== correct)
               .map((a) => a.studentId),
           )
-          const penalty = current.wrongPoints?.[currentIndex] ?? 0
-          if (penalty !== 0) {
+          const wrongDelta = current.wrongPoints?.[currentIndex] ?? 0
+          if (wrongDelta !== 0) {
             await Promise.all(
               current.students
                 .filter((s) => wrongIds.has(s.id))
                 .map(async (s) => {
-                  const newScore = s.score - penalty
+                  const newScore = s.score + wrongDelta
                   await supaUpdateStudentScore(classId, s.id, newScore)
                   const updated: Student = { ...s, score: newScore }
                   dispatch({ type: "UPDATE_STUDENT", payload: { classId, student: updated } })
