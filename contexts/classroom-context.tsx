@@ -77,8 +77,19 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
     case "SET_ERROR":
       return { ...state, error: action.payload }
 
-    case "LOAD_CLASSES":
-      return { ...state, classes: action.payload }
+    case "LOAD_CLASSES": {
+      // Preserve client-only flags like isCalled when reloading classes
+      const merged = action.payload.map((incoming) => {
+        const existing = state.classes.find((c) => c.id === incoming.id)
+        if (!existing) return incoming
+        const mergedStudents = (incoming.students || []).map((incSt) => {
+          const exSt = existing.students.find((s) => s.id === incSt.id)
+          return exSt ? { ...incSt, isCalled: exSt.isCalled } : incSt
+        })
+        return { ...incoming, students: mergedStudents }
+      })
+      return { ...state, classes: merged }
+    }
 
     case "SET_CURRENT_CLASS":
       return { ...state, currentClass: action.payload }
@@ -276,17 +287,23 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
     }
 
     case "UPDATE_STUDENT": {
-      const updatedClasses = state.classes.map((cls) =>
-        cls.id === action.payload.classId
-          ? {
-              ...cls,
-              students: cls.students.map((student) =>
-                student.id === action.payload.student.id ? action.payload.student : student,
-              ),
-              updatedAt: Date.now(),
-            }
-          : cls,
-      )
+      const updatedClasses = state.classes.map((cls) => {
+        if (cls.id !== action.payload.classId) return cls
+        const updatedStudents = cls.students.map((existingStudent) => {
+          if (existingStudent.id !== action.payload.student.id) return existingStudent
+          const updatedFromDB = action.payload.student
+          return {
+            id: updatedFromDB.id,
+            name: updatedFromDB.name,
+            studentId: updatedFromDB.studentId,
+            joinedAt: updatedFromDB.joinedAt,
+            score: updatedFromDB.score,
+            // critical: keep client-only flag
+            isCalled: existingStudent.isCalled,
+          }
+        })
+        return { ...cls, students: updatedStudents, updatedAt: Date.now() }
+      })
       const updatedCurrentClass =
         state.currentClass?.id === action.payload.classId
           ? updatedClasses.find((cls) => cls.id === action.payload.classId) || state.currentClass

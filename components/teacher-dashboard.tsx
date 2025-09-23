@@ -64,7 +64,7 @@ export function TeacherDashboard() {
       <DashboardHeader />
 
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-        <div className="w-full md:w-96 flex-shrink-0 overflow-hidden">
+        <div className="w-full md:w-[28rem] flex-shrink-0 overflow-hidden">
           <ClassHierarchy />
         </div>
 

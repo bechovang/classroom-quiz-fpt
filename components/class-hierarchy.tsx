@@ -240,6 +240,12 @@ export function ClassHierarchy() {
                           {student.score} điểm
                         </Badge>
 
+                        {student.isCalled && (
+                          <Badge variant="outline" className="text-[10px] h-4 border-amber-300 text-amber-700 bg-amber-50">
+                            Đã gọi
+                          </Badge>
+                        )}
+
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                           <Button
                             variant="ghost"
