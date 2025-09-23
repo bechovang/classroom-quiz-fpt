@@ -77,8 +77,7 @@ export function TeamAssignmentDialog({ open, onOpenChange, student, onComplete }
     if (!isLocked || !state.currentClass) return
     // Use the real flow: set correct answer then end quiz (RPC awards points, context handles wrong points)
     setLocalCorrectAnswer(answerId)
-    setCorrectAnswer(state.currentClass.id, answerId as any)
-    endQuiz(state.currentClass.id)
+    endQuiz(state.currentClass.id, answerId as any)
     setPointsAwarded(true)
     setTimeout(() => {
       onOpenChange(false)

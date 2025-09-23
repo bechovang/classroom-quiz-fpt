@@ -39,7 +39,9 @@ export function QuizDisplay() {
   }
 
   const handleEndQuiz = () => {
-    endQuiz(state.currentClass!.id)
+    const answer = selectedCorrectAnswer || quiz.correctAnswer
+    if (!answer) return
+    endQuiz(state.currentClass!.id, answer)
     setSelectedCorrectAnswer(null)
   }
 

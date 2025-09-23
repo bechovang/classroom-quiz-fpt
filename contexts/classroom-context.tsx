@@ -465,7 +465,7 @@ const ClassroomContext = createContext<{
   updateStudentScore: (classId: string, studentId: string, newScore: number) => void
   adjustScoreByStudentCode: (classId: string, studentCode: string, delta: number) => Promise<void>
   setCorrectAnswer: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
-  endQuiz: (classId: string) => void
+  endQuiz: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
   openQuizForEveryone: (classId: string, excludedStudentId?: string) => Promise<void>
   lockQuiz: (classId: string) => Promise<void>
   setQuestionPoints: (classId: string, points: number[]) => void
@@ -903,36 +903,40 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     dispatch({ type: "SET_CORRECT_ANSWER", payload: { classId, correctAnswer } })
   }
 
-  const endQuiz = (classId: string) => {
+  const endQuiz = (classId: string, correctAnswer: "A" | "B" | "C" | "D") => {
     // Grade and lock via Supabase
     const current = state.classes.find((c) => c.id === classId)
-    const correct = current?.currentQuiz?.correctAnswer
     const currentIndex = current?.currentQuestionIndex ?? 0
-    const points = current?.questionPoints?.[currentIndex] ?? 10
+    const pointsCorrect = current?.questionPoints?.[currentIndex] ?? 10
+    const pointsWrong = current?.wrongPoints?.[currentIndex] ?? 0
     // Penalize all students who chose incorrectly (called student likely already penalized on Wrong click)
     ;(async () => {
       try {
-        if (correct) {
-          await supaGradeQuizAndAwardPoints(classId, correct, points)
-        }
-        if (current?.currentQuiz && correct) {
-          const wrongIds = new Set(
-            current.currentQuiz.answers
-              .filter((a) => a.answer !== correct)
-              .map((a) => a.studentId),
-          )
-          const wrongDelta = current.wrongPoints?.[currentIndex] ?? 0
-          if (wrongDelta !== 0) {
-            await Promise.all(
-              current.students
-                .filter((s) => wrongIds.has(s.id))
-                .map(async (s) => {
-                  const newScore = s.score + wrongDelta
-                  await supaUpdateStudentScore(classId, s.id, newScore)
-                  const updated: Student = { ...s, score: newScore }
-                  dispatch({ type: "UPDATE_STUDENT", payload: { classId, student: updated } })
-                }),
+        // Try all-in-one RPC first
+        try {
+          await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(classId, correctAnswer, pointsCorrect, pointsWrong))
+        } catch (rpcErr) {
+          // Fallback to legacy flow
+          await supaGradeQuizAndAwardPoints(classId, correctAnswer, pointsCorrect)
+          if (current?.currentQuiz) {
+            const wrongIds = new Set(
+              current.currentQuiz.answers
+                .filter((a) => a.answer !== correctAnswer)
+                .map((a) => a.studentId),
             )
+            const wrongDelta = pointsWrong
+            if (wrongDelta !== 0) {
+              await Promise.all(
+                current.students
+                  .filter((s) => wrongIds.has(s.id))
+                  .map(async (s) => {
+                    const newScore = s.score + wrongDelta
+                    await supaUpdateStudentScore(classId, s.id, newScore)
+                    const updated: Student = { ...s, score: newScore }
+                    dispatch({ type: "UPDATE_STUDENT", payload: { classId, student: updated } })
+                  }),
+              )
+            }
           }
         }
         await supaLockCurrentQuiz(classId)

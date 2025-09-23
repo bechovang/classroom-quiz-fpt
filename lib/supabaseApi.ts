@@ -346,6 +346,29 @@ export async function gradeQuizAndAwardPoints(
   return (data || []) as { updated_student_id: string; new_score: number }[]
 }
 
+// Attempt an all-in-one grading RPC that awards correct points and applies wrong delta in one transaction
+// SQL expected on server:
+// create or replace function public.grade_full_quiz(
+//   session_id_param uuid,
+//   correct_answer_param char(1),
+//   points_correct_param int,
+//   points_wrong_param int
+// ) returns void language plpgsql as $$ ... $$;
+export async function gradeFullQuiz(
+  sessionId: string,
+  correctAnswer: "A" | "B" | "C" | "D",
+  pointsCorrect: number,
+  pointsWrong: number,
+): Promise<void> {
+  const { error } = await supabase.rpc("grade_full_quiz", {
+    session_id_param: sessionId,
+    correct_answer_param: correctAnswer,
+    points_correct_param: pointsCorrect,
+    points_wrong_param: pointsWrong,
+  })
+  if (error) throw error
+}
+
 function generateClassCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
   let code = ""
