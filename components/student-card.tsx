@@ -22,19 +22,14 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student }: StudentCardProps) {
-  const { state, dispatch } = useClassroom()
+  const { state, deleteStudent } = useClassroom()
   const [showEditDialog, setShowEditDialog] = useState(false)
 
   if (!state.currentClass) return null
 
   const handleRemoveStudent = () => {
-    dispatch({
-      type: "REMOVE_STUDENT",
-      payload: {
-        classId: state.currentClass!.id,
-        studentId: student.id,
-      },
-    })
+    if (!state.currentClass) return
+    deleteStudent(state.currentClass.id, student.id)
   }
 
   const getTeamColor = (team?: "A" | "B") => {
@@ -50,16 +45,45 @@ export function StudentCard({ student }: StudentCardProps) {
 
   return (
     <>
-      <Card className={`transition-all hover:shadow-sm ${student.isCalled ? "opacity-60" : ""}`}>
-        <CardContent className="p-3">
+      <Card
+        className={`transition-all duration-300 ease-in-out hover:shadow-md ${
+          student.isCalled
+            ? "ring-2 ring-amber-400/80 bg-amber-50/80 dark:bg-amber-950/30 transform scale-[1.03]"
+            : "hover:border-primary/20"
+        }`}
+      >
+        <CardContent className="p-3 relative overflow-hidden">
+          {student.isCalled && (
+            <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-amber-400 to-orange-500" />
+          )}
           <div className="flex items-center space-x-3">
-            <Avatar className="w-10 h-10">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm">{student.name.charAt(0)}</AvatarFallback>
+            <Avatar className={`w-10 h-10 relative ${student.isCalled ? "ring-2 ring-amber-400/60" : ""}`}>
+              {student.isCalled && (
+                <>
+                  <span className="absolute -top-1 -right-1 inline-flex h-2 w-2 rounded-full bg-amber-400 opacity-75 animate-ping" />
+                  <span className="absolute -top-1 -right-1 inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                </>
+              )}
+              <AvatarFallback
+                className={`${
+                  student.isCalled
+                    ? "bg-gradient-to-br from-amber-200/60 to-orange-200/60 text-amber-900"
+                    : "bg-primary/10 text-primary"
+                } text-sm`}
+              >
+                {student.name.charAt(0)}
+              </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-foreground truncate">{student.name}</h4>
+                <h4
+                  className={`text-sm font-semibold ${
+                    student.isCalled ? "text-amber-800 dark:text-amber-200" : "text-foreground"
+                  } whitespace-normal break-words`}
+                >
+                  {student.name}
+                </h4>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
@@ -80,23 +104,24 @@ export function StudentCard({ student }: StudentCardProps) {
                 </DropdownMenu>
               </div>
 
-              <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center space-x-2">
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge
+                    variant={student.isCalled ? "default" : "secondary"}
+                    className={`text-xs ${student.isCalled ? "bg-amber-500 text-white" : ""}`}
+                  >
                     <Trophy className="w-3 h-3 mr-1" />
                     {student.score}
                   </Badge>
-                  {student.team && (
-                    <Badge className={`text-xs ${getTeamColor(student.team)}`}>
-                      <Users className="w-3 h-3 mr-1" />
-                      {student.team}
-                    </Badge>
-                  )}
+                  {/* team badge removed (team not in Student type) */}
                 </div>
                 {student.isCalled && (
-                  <Badge variant="outline" className="text-xs">
-                    Called
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
+                      Đang được gọi
+                    </Badge>
+                  </div>
                 )}
               </div>
             </div>

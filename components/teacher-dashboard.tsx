@@ -63,12 +63,12 @@ export function TeacherDashboard() {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
 
-      <div className="flex h-[calc(100vh-4rem)]">
-        <div className="w-80">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="w-full md:w-96 flex-shrink-0 overflow-hidden">
           <ClassHierarchy />
         </div>
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           <div className="border-b border-border bg-card/30 px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">

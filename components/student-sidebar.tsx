@@ -20,6 +20,7 @@ export function StudentSidebar() {
 
   const { students } = state.currentClass
   const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name))
+  const anyStudentCalled = students.some((s) => s.isCalled)
 
   return (
     <div className="h-full flex flex-col">
@@ -58,7 +59,21 @@ export function StudentSidebar() {
                 <p className="text-xs text-muted-foreground">Add students to get started</p>
               </div>
             ) : (
-              sortedStudents.map((student) => <StudentCard key={student.id} student={student} />)
+              sortedStudents.map((student) => (
+                <div
+                  key={student.id}
+                  className={`group relative rounded-lg transition-all duration-300 ${
+                    student.isCalled ? "ring-2 ring-amber-300/60" : "hover:ring-1 hover:ring-primary/20"
+                  } ${anyStudentCalled && !student.isCalled ? "opacity-50 hover:opacity-100" : "opacity-100"}`}
+                >
+                  <StudentCard student={student} />
+                  {/* subtle glow on hover */}
+                  <div className="pointer-events-none absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" style={{
+                    background:
+                      "radial-gradient(600px circle at var(--x, 0) var(--y, 0), rgba(59,130,246,0.06), transparent 40%)",
+                  }} />
+                </div>
+              ))
             )}
           </div>
         </ScrollArea>

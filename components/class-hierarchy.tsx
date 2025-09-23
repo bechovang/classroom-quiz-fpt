@@ -85,7 +85,7 @@ export function ClassHierarchy() {
   }
 
   return (
-    <div className="h-full bg-sidebar border-r border-sidebar-border">
+    <div className="h-full bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between mb-3">
@@ -135,7 +135,7 @@ export function ClassHierarchy() {
         </div>
       </div>
 
-      {/* Class Tree */}
+      {/* Class Tree - only this area scrolls */}
       <div className="flex-1 overflow-y-auto p-2">
         <div className="space-y-1">
           {state.classes.map((classItem) => {
@@ -215,21 +215,28 @@ export function ClassHierarchy() {
                       <div
                         key={student.id}
                         className={`
-                          flex items-center gap-2 p-2 rounded-md text-sm group
+                          flex items-center gap-2 p-2 rounded-md text-sm group transition-all duration-200
                           ${
                             student.isCalled
-                              ? "opacity-50 text-muted-foreground"
+                              ? "ring-2 ring-amber-300/70 bg-amber-50/80 dark:bg-amber-950/20"
                               : "hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
                           }
                         `}
                       >
-                        <User className="h-3 w-3" />
-                        <span className="flex-1 truncate">{student.name}</span>
+                        <div className="relative">
+                          <User className={`h-3 w-3 ${student.isCalled ? "text-amber-600" : ""}`} />
+                          {student.isCalled && (
+                            <span className="absolute -top-1 -right-1 inline-flex h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                          )}
+                        </div>
+                        <span className={`flex-1 whitespace-normal break-words pr-1 ${student.isCalled ? "font-semibold text-amber-800" : ""}`}>
+                          {student.name}
+                        </span>
 
-                        <Badge variant="outline" className="text-xs h-4">
+                        <Badge variant="outline" className={`text-xs h-4 ${student.isCalled ? "border-amber-300 text-amber-700 bg-amber-50" : ""}`}>
                           {student.studentId}
                         </Badge>
-                        <Badge variant="secondary" className="text-xs h-4">
+                        <Badge variant={student.isCalled ? "default" : "secondary"} className={`text-xs h-4 ${student.isCalled ? "bg-amber-500 text-white" : ""}`}>
                           {student.score} điểm
                         </Badge>
 

@@ -127,19 +127,19 @@ export function StudentSelector({ onStudentSelect }: StudentSelectorProps) {
             {filteredStudents.map((student) => (
               <Card
                 key={student.id}
-                className="hover:shadow-lg transition-all duration-200 cursor-pointer group hover:scale-105 border-2 hover:border-primary/30"
+                className="relative overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group border-2 hover:border-primary/30"
                 onClick={() => onStudentSelect(student.id)}
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4">
-                    <Avatar className="w-16 h-16 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all">
-                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-primary text-xl font-bold">
+                    <Avatar className={`w-16 h-16 ring-2 transition-all ${student.isCalled ? "ring-amber-400/70" : "ring-primary/20 group-hover:ring-primary/40"}`}>
+                      <AvatarFallback className={`bg-gradient-to-br ${student.isCalled ? "from-amber-200/60 to-orange-200/60 text-amber-900" : "from-primary/20 to-secondary/20 text-primary"} text-xl font-bold`}>
                         {(student.name || "?").charAt(0)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                      <h4 className={`text-lg font-semibold transition-colors ${student.isCalled ? "text-amber-800" : "text-foreground group-hover:text-primary"} whitespace-normal break-words`}>
                         {student.name || "Unknown"}
                       </h4>
 
@@ -152,18 +152,23 @@ export function StudentSelector({ onStudentSelect }: StudentSelectorProps) {
                         </Badge>
 
                         {student.isCalled && (
-                          <Badge variant="secondary" className="text-xs">
-                            Called
+                          <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
+                            Đang được gọi
                           </Badge>
                         )}
                       </div>
 
                       <div className="flex items-center justify-end mt-3">
-                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <ArrowRight className={`w-4 h-4 transition-colors ${student.isCalled ? "text-amber-700" : "text-muted-foreground group-hover:text-primary"}`} />
                       </div>
                     </div>
                   </div>
                 </CardContent>
+                {/* subtle radial glow */}
+                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{
+                  background:
+                    "radial-gradient(600px circle at var(--x, 0) var(--y, 0), rgba(59,130,246,0.06), transparent 40%)",
+                }} />
               </Card>
             ))}
           </div>
