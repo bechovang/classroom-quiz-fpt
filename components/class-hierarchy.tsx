@@ -18,7 +18,8 @@ export function ClassHierarchy() {
 
   const escapeCsv = (value: string) => {
     const v = value ?? ""
-    if (v.includes(",") || v.includes("\n") || v.includes('"')) {
+    // Quote if contains delimiter (tab), newline, comma, or quotes
+    if (v.includes("\t") || v.includes(",") || v.includes("\n") || v.includes('"')) {
       return '"' + v.replace(/"/g, '""') + '"'
     }
     return v
@@ -26,20 +27,25 @@ export function ClassHierarchy() {
 
   const buildCsv = (includeHeader = true) => {
     if (!state.currentClass) return ""
-    const header = includeHeader ? "Tên,MSSV,Điểm\n" : ""
+    const header = includeHeader ? "Tên\tMSSV\tĐiểm\n" : ""
     const lines = state.currentClass.students.map(
-      (s) => `${escapeCsv(s.name)},${escapeCsv(s.studentId)},${s.score}`,
+      (s) => `${escapeCsv(s.name)}\t${escapeCsv(s.studentId)}\t${s.score}`,
     )
     return header + lines.join("\n")
   }
 
+  const buildScoresOnly = () => {
+    if (!state.currentClass) return ""
+    return state.currentClass.students.map((s) => String(s.score ?? 0)).join("\n")
+  }
+
   const handleDownload = () => {
     if (!state.currentClass) return
-    const content = buildCsv(true)
+    const content = buildCsv(false)
     const blob = new Blob([content], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
-    const filename = `${(state.currentClass.name || "class").replace(/[^a-zA-Z0-9-_]+/g, "_")}_students.csv`
+    const filename = `${(state.currentClass.name || "class").replace(/[^a-zA-Z0-9-_]+/g, "_")}_students.tsv`
     a.href = url
     a.download = filename
     document.body.appendChild(a)
@@ -50,7 +56,22 @@ export function ClassHierarchy() {
 
   const handleCopy = async () => {
     if (!state.currentClass) return
-    const content = buildCsv(true)
+    const content = buildCsv(false)
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch (e) {
+      const textarea = document.createElement("textarea")
+      textarea.value = content
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textarea)
+    }
+  }
+
+  const handleCopyScores = async () => {
+    if (!state.currentClass) return
+    const content = buildScoresOnly()
     try {
       await navigator.clipboard.writeText(content)
     } catch (e) {
@@ -316,10 +337,13 @@ export function ClassHierarchy() {
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2">
             <Button onClick={() => { handleDownload(); setShowExportDialog(false) }} className="justify-start">
-              <Download className="h-4 w-4 mr-2" /> Tải xuống CSV
+              <Download className="h-4 w-4 mr-2" /> Tải xuống TSV
             </Button>
             <Button variant="outline" onClick={() => { handleCopy(); setShowExportDialog(false) }} className="justify-start">
               <Copy className="h-4 w-4 mr-2" /> Sao chép vào Clipboard
+            </Button>
+            <Button variant="outline" onClick={() => { handleCopyScores(); setShowExportDialog(false) }} className="justify-start">
+              <Copy className="h-4 w-4 mr-2" /> Copy cột điểm
             </Button>
           </div>
         </DialogContent>

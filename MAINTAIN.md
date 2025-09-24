@@ -567,8 +567,8 @@ const measurePerformance = (name: string, fn: () => void) => {
   - `postgres_changes` on `students` (INSERT/UPDATE/DELETE) filtered by `class_session_id` for live student list/score updates.
 
 ### RPC
-- `grade_and_award_points(session_id_param uuid, correct_answer_param char(1), points_param int)` updates correct students’ scores server-side.
-- Wrong points for the initially called student are applied from the client on Wrong click to keep UX snappy; you may add a server-side RPC if desired.
+- Preferred: `grade_full_quiz(session_id_param uuid, correct_answer_param char(1), points_correct_param int, points_wrong_param int)` to award correct and apply wrong deltas in a single transaction.
+- Fallback: `grade_and_award_points(session_id_param uuid, correct_answer_param char(1), points_param int)` for correct answers, then client updates wrong answers individually.
 
 ### Frontend Contracts
 - Context methods:
@@ -586,9 +586,8 @@ const measurePerformance = (name: string, fn: () => void) => {
   - A/B/C/D for selecting the correct answer in `TeamAssignmentDialog` via `shortcut-ans-A/B/C/D`
 - Ensure components keep these IDs if refactoring, or update the handler accordingly.
 
-### Import/Export Format (Edit Points)
-- Import accepts lines in the form: `positive, wrong`
-  - Delimiters: comma, space, or tab
+### Import/Export (Points & Class List)
+- Points Import accepts lines in the form: `positive, wrong` (comma/space/tab delimited)
   - Example:
 ```
 1, 0
@@ -597,9 +596,13 @@ const measurePerformance = (name: string, fn: () => void) => {
 4, -2
 5, 0
 ```
-- Export generates the same format. Both positive and wrong arrays are persisted in context.
+- Class list export options (from Class Hierarchy):
+  - TSV (tab-delimited) without header: `Tên\tMSSV\tĐiểm` rows
+  - Copy TSV to clipboard
+  - Copy scores only (one score per line) preserving current order
 
 ### Known Pitfalls
+- Preserve client-only flags (e.g., `isCalled`) across realtime updates: reducers must merge DB payloads with existing state instead of overwriting.
 - If blocked student behavior seems inconsistent, verify `blocked_student_id` updates are permitted by RLS and realtime is enabled.
 - Ensure `subscribeToQuizLock` dispatches both lock and blocked changes into context.
 - When adding new UI, keep keyboard focusable inputs in mind; the global handler ignores shortcuts if the user is typing in inputs/textareas.

@@ -129,7 +129,7 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
             </div>
             <div className="mt-1 text-center text-xs text-muted-foreground">
               Câu hiện tại: {(state.currentClass.currentQuestionIndex ?? 0) + 1}
-              {state.currentClass.questionPoints?.length ? `/${state.currentClass.questionPoints.length}` : ""} · Điểm nhận được: {state.currentClass.questionPoints?.[(state.currentClass.currentQuestionIndex ?? 0)] ?? 10}
+              {state.currentClass.questionPoints?.length ? `/${state.currentClass.questionPoints.length}` : ""}
             </div>
             <div className="mt-2 flex items-center justify-center gap-2">
               <Button

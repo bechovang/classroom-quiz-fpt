@@ -32,6 +32,12 @@ export function QuizDisplay() {
     return pts[idx] ?? 10
   }
 
+  const getWrongPointsForCurrentQuestion = () => {
+    const pts = state.currentClass?.wrongPoints || []
+    const idx = state.currentClass?.currentQuestionIndex ?? 0
+    return pts[idx] ?? 0
+  }
+
   const getCurrentQuestionLabel = () => {
     const idx = (state.currentClass?.currentQuestionIndex ?? 0) + 1
     const total = state.currentClass?.questionPoints?.length
@@ -78,6 +84,10 @@ export function QuizDisplay() {
               <div className="flex items-center gap-1">
                 <Trophy className="h-4 w-4" />
                 <span>Điểm câu hiện tại: {getPointsForCurrentQuestion()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Trophy className="h-4 w-4 text-red-500" />
+                <span>Điểm trừ: {getWrongPointsForCurrentQuestion()}</span>
               </div>
               <div className="flex items-center gap-2">
                 {state.currentClass?.isQuizLocked ? (

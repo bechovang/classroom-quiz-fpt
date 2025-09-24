@@ -32,6 +32,7 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
   const totalQuestions = state.currentClass.questionPoints?.length
   const currentQuestionLabel = totalQuestions ? `${currentQuestionIndex + 1}/${totalQuestions}` : `${currentQuestionIndex + 1}`
   const currentQuestionPoints = state.currentClass.questionPoints?.[currentQuestionIndex] ?? 10
+  const currentWrongPoints = state.currentClass.wrongPoints?.[currentQuestionIndex] ?? 0
 
   const handleRandomPick = async () => {
     if (availableStudents.length === 0) return
@@ -91,6 +92,8 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
             <span className="font-semibold">Câu hiện tại: {currentQuestionLabel}</span>
             <span className="opacity-70">·</span>
             <span>Điểm nhận: <span className="font-semibold">{currentQuestionPoints}</span></span>
+            <span className="opacity-70">·</span>
+            <span>Điểm trừ: <span className="font-semibold">{currentWrongPoints}</span></span>
           </Badge>
         </div>
         <div className="flex justify-between text-sm">

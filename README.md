@@ -6,7 +6,7 @@ A modern, comprehensive classroom management web application built with Next.js,
 
 ### For Teachers
 - **Student Management**: Add, edit, remove students with CSV import/export
-- **Random Name Picker**: Animated picker with visual effects and confetti
+- **Random Name Picker**: Animated picker with visual effects and confetti; clearly highlights called students
 - **Scoring System**: Award points with quick buttons or custom amounts
 - **Per-question Quiz**:
   - Lock/unlock quiz in real time via Supabase (`is_quiz_locked`)
@@ -14,6 +14,7 @@ A modern, comprehensive classroom management web application built with Next.js,
   - Block the initially called student from answering in that open round
   - Configure per-question points and per-question wrong points (can be negative)
   - Import/Export per-question points in pairs: `positive, wrong`
+  - Shows both current question points and wrong-point penalty (teacher view)
 - **QR Code Generator**: Create time-limited QR codes for student activities
 - **Team Management**: Organize students into teams with balanced assignments
 - **Real-time Analytics**: Track class progress and student performance
@@ -47,7 +48,7 @@ A modern, comprehensive classroom management web application built with Next.js,
 1. **Clone the repository**
    \`\`\`bash
    git clone <repository-url>
-   cd classroom-management
+   cd classroom-quiz-fpt
    \`\`\`
 
 2. **Install dependencies**
@@ -103,6 +104,7 @@ A modern, comprehensive classroom management web application built with Next.js,
 2. **View Dashboard**: Check personal stats and team information
 3. **Participate**: Scan QR codes to earn points and join activities
 4. **Track Progress**: Locked quiz disables answers; if you were the called wrong student, you are blocked for that round.
+5. Student view shows only the current question index (no points), to keep focus.
 
 ## 🏗️ Project Structure
 
@@ -154,12 +156,16 @@ Built with shadcn/ui components for consistency and accessibility:
 ## 🔧 Configuration
 
 ### Environment Variables
-Create a `.env.local` file for local development:
+Create a `.env.local` file for local development (see `.env.sample`):
 
 \`\`\`env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# Optional teacher login (fallback-only)
+NEXT_PUBLIC_TEACHER_USERNAME=teacher1
+NEXT_PUBLIC_TEACHER_PASSWORD=123456
 \`\`\`
 
 ### Customization
