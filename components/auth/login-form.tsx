@@ -38,12 +38,7 @@ export function LoginForm() {
     window.location.href = "/student"
   }
 
-  const fillTeacherCredentials = () => {
-    setLoginData({
-      username: process.env.NEXT_PUBLIC_TEACHER_USERNAME || "teacher1",
-      password: process.env.NEXT_PUBLIC_TEACHER_PASSWORD || "123456",
-    })
-  }
+  // Removed demo fill button and handler
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
@@ -125,17 +120,7 @@ export function LoginForm() {
                 </Button>
               </form>
 
-              <div className="text-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={fillTeacherCredentials}
-                  className="bg-transparent"
-                >
-                  Fill Demo Credentials
-                </Button>
-              </div>
+              
             </div>
 
             {/* Divider */}
