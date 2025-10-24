@@ -85,6 +85,14 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
 
       // Record correct answer locally for UI
       setCorrectAnswer(current.id, answerKey)
+      // If a student was called (blockedStudentId), treat the teacher's selected option as this student's answer
+      try {
+        if (current.blockedStudentId && selected) {
+          await import("@/lib/supabaseApi").then((m) => m.submitAnswer(current.id, current.blockedStudentId as string, selected))
+        }
+      } catch (err) {
+        console.error("Failed to record called student's answer:", err)
+      }
       // Auto grade entire class based on answerKey and configured points; also locks quiz in DB
       const { correctPts, wrongPts } = pointsForCurrent()
       await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(current.id, answerKey, correctPts, wrongPts))
