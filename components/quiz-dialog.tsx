@@ -11,7 +11,7 @@ interface QuizDialogProps {
 export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="sm:max-w-none w-[92vw] max-w-[92vw] h-[88vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Câu hỏi đang hoạt động</DialogTitle>
         </DialogHeader>

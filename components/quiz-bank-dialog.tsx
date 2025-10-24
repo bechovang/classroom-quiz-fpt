@@ -89,7 +89,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       }
       if (!payload.question_text || !payload.options.A || !payload.options.B || !payload.options.C || !payload.options.D) {
-        toast({ title: "Thiếu dữ liệu", description: "Vui lòng nhập đầy đủ câu hỏi và 4 đáp án" })
+        toast({ title: "Thiếu dữ liệu", description: "Vui lòng nhập đầy đủ tất cả các trường" })
         return
       }
       if (formMode === "create") {
@@ -199,7 +199,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="sm:max-w-none w-[92vw] max-w-[92vw] h-[88vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Quiz Bank</DialogTitle>
         </DialogHeader>
@@ -222,7 +222,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
               </Button>
             </div>
 
-            <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
+            <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
               {loading ? (
                 <div className="text-sm text-muted-foreground">Đang tải...</div>
               ) : items.length === 0 ? (
@@ -273,7 +273,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
             </div>
             <div className="space-y-2">
               <Label>Câu hỏi</Label>
-              <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={4} />
+              <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={6} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -299,7 +299,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
             </div>
             <div className="space-y-2">
               <Label>Giải thích</Label>
-              <Textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={3} />
+              <Textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={4} />
             </div>
             <div className="space-y-2">
               <Label>Tags (phân cách bằng dấu phẩy)</Label>
