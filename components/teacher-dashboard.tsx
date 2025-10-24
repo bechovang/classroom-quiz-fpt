@@ -6,13 +6,14 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { ClassHierarchy } from "@/components/class-hierarchy"
 import { RandomPicker } from "@/components/random-picker"
 import { ActionButtons } from "@/components/action-buttons"
-import { QuizDisplay } from "@/components/quiz-display"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser } from "lucide-react"
-import { useState } from "react"
+import { Trophy, RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser, BookOpen } from "lucide-react"
+import { useEffect, useState } from "react"
 import { ScoringSystem } from "@/components/scoring-system"
 import { PointsSystem } from "@/components/points-system"
+import { QuizBankDialog } from "@/components/quiz-bank-dialog"
+import { QuizDialog } from "@/components/quiz-dialog"
 
 export function TeacherDashboard() {
   const { state, resetQueue, lockQuiz, openQuizForEveryone, clearAnswers, resetAllScores } = useClassroom()
@@ -20,6 +21,15 @@ export function TeacherDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
   const [showScoringSystem, setShowScoringSystem] = useState(false)
   const [showPointsSystem, setShowPointsSystem] = useState(false)
+  const [showQuizBank, setShowQuizBank] = useState(false)
+  const [showQuizDialog, setShowQuizDialog] = useState(false)
+
+  // Auto-open quiz dialog when a quiz becomes active; close when none
+  useEffect(() => {
+    const hasActiveQuiz = Boolean(state.currentClass?.currentQuiz?.isActive)
+    if (hasActiveQuiz) setShowQuizDialog(true)
+    else setShowQuizDialog(false)
+  }, [state.currentClass?.currentQuiz?.id, state.currentClass?.currentQuiz?.isActive])
 
   if (!state.currentClass) {
     return (
@@ -91,6 +101,10 @@ export function TeacherDashboard() {
                   <Calculator className="h-4 w-4 mr-2" />
                   Edit Points
                 </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowQuizBank(true)} className="h-8">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Quiz Bank
+                </Button>
                 {state.currentClass && (
                   state.currentClass.isQuizLocked ? (
                     <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-8">
@@ -134,7 +148,7 @@ export function TeacherDashboard() {
 
               <ActionButtons selectedStudent={selectedStudent} onActionComplete={() => setSelectedStudent(null)} />
 
-              <QuizDisplay />
+              {/* Quiz is shown in a dialog now; keep body clean */}
             </div>
           </div>
         </div>
@@ -143,6 +157,8 @@ export function TeacherDashboard() {
       {/* Dialogs */}
       <ScoringSystem open={showScoringSystem} onOpenChange={setShowScoringSystem} />
       <PointsSystem open={showPointsSystem} onOpenChange={setShowPointsSystem} />
+      <QuizBankDialog open={showQuizBank} onOpenChange={setShowQuizBank} />
+      <QuizDialog open={showQuizDialog} onOpenChange={setShowQuizDialog} />
     </div>
   )
 }

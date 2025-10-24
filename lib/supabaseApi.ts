@@ -369,6 +369,128 @@ export async function gradeFullQuiz(
   if (error) throw error
 }
 
+export interface SupabaseQuizBankRow {
+  id: string
+  created_at: string
+  question_text: string
+  options: { A: string; B: string; C: string; D: string }
+  correct_answer: "A" | "B" | "C" | "D"
+  explanation: string | null
+  tags: string[] | null
+}
+
+export async function fetchRandomQuizFromBank(tag?: string): Promise<SupabaseQuizBankRow | null> {
+  let query = supabase
+    .from("quiz_bank")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+
+  if (tag) {
+    // Filter by tag if provided
+    query = query.contains("tags", [tag]) as any
+  }
+
+  // Fetch up to 50 rows then pick a random client-side to avoid slow ORDER BY RANDOM()
+  const { data, error } = await query.limit(50)
+  if (error) throw error
+  const rows = (data || []) as SupabaseQuizBankRow[]
+  if (rows.length === 0) return null
+  const picked = rows[Math.floor(Math.random() * rows.length)]
+  return picked
+}
+
+export async function listQuizBank(params?: { tag?: string; search?: string; limit?: number }): Promise<SupabaseQuizBankRow[]> {
+  let query = supabase
+    .from("quiz_bank")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .order("created_at", { ascending: false })
+
+  if (params?.tag) {
+    query = query.contains("tags", [params.tag]) as any
+  }
+  if (params?.search) {
+    // Basic ILIKE search on question_text
+    query = query.ilike("question_text", `%${params.search}%`) as any
+  }
+  if (params?.limit) {
+    query = query.limit(params.limit) as any
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data || []) as SupabaseQuizBankRow[]
+}
+
+export async function createQuizBankItem(payload: {
+  question_text: string
+  options: { A: string; B: string; C: string; D: string }
+  correct_answer: "A" | "B" | "C" | "D"
+  explanation?: string | null
+  tags?: string[] | null
+}): Promise<SupabaseQuizBankRow> {
+  const { data, error } = await supabase
+    .from("quiz_bank")
+    .insert({
+      question_text: payload.question_text,
+      options: payload.options,
+      correct_answer: payload.correct_answer,
+      explanation: payload.explanation ?? null,
+      tags: payload.tags ?? null,
+    })
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .single()
+  if (error) throw error
+  return data as SupabaseQuizBankRow
+}
+
+export async function updateQuizBankItem(
+  id: string,
+  fields: Partial<{
+    question_text: string
+    options: { A: string; B: string; C: string; D: string }
+    correct_answer: "A" | "B" | "C" | "D"
+    explanation: string | null
+    tags: string[] | null
+  }>,
+): Promise<SupabaseQuizBankRow> {
+  const { data, error } = await supabase
+    .from("quiz_bank")
+    .update(fields)
+    .eq("id", id)
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .single()
+  if (error) throw error
+  return data as SupabaseQuizBankRow
+}
+
+export async function deleteQuizBankItem(id: string): Promise<void> {
+  const { error } = await supabase.from("quiz_bank").delete().eq("id", id)
+  if (error) throw error
+}
+
+export async function bulkInsertQuizBank(rows: Array<{
+  question_text: string
+  options: { A: string; B: string; C: string; D: string }
+  correct_answer: "A" | "B" | "C" | "D"
+  explanation?: string | null
+  tags?: string[] | null
+}>): Promise<number> {
+  if (rows.length === 0) return 0
+  const { data, error } = await supabase
+    .from("quiz_bank")
+    .insert(
+      rows.map((r) => ({
+        question_text: r.question_text,
+        options: r.options,
+        correct_answer: r.correct_answer,
+        explanation: r.explanation ?? null,
+        tags: r.tags ?? null,
+      })),
+    )
+    .select("id")
+  if (error) throw error
+  return (data || []).length
+}
+
 function generateClassCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
   let code = ""

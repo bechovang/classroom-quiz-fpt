@@ -492,6 +492,7 @@ const ClassroomContext = createContext<{
   resetAllScores: (classId: string) => Promise<void>
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
+  startRandomQuizFromBank: (classId: string, opts?: { tag?: string; excludeStudentId?: string }) => Promise<void>
 } | null>(null)
 
 export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1018,6 +1019,31 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const startRandomQuizFromBank = async (classId: string, opts?: { tag?: string; excludeStudentId?: string }) => {
+    try {
+      // 1) Fetch a random quiz row from bank
+      const row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag))
+      if (!row) {
+        throw new Error("Không tìm thấy câu hỏi trong quiz bank")
+      }
+
+      // 2) Open quiz for everyone on server (clear answers + unlock + optionally set blocked_student_id)
+      await supaOpenQuizForEveryone(classId, opts?.excludeStudentId)
+
+      // 3) Dispatch local quiz state
+      createQuiz(classId, row.question_text, row.options)
+
+      // Optionally preload correct answer into local quiz for teacher flow
+      if (row.correct_answer) {
+        // keep correct hidden from students; just store in memory for teacher UI decision
+        // We can set it via setCorrectAnswer only when teacher confirms; so we don't set now
+      }
+    } catch (error) {
+      console.error("Failed to start random quiz from bank:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to start quiz from bank" })
+    }
+  }
+
   return (
     <ClassroomContext.Provider
       value={{
@@ -1052,6 +1078,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         loadFromLocalStorage,
         clearAnswers,
         resetAllScores,
+        startRandomQuizFromBank,
       }}
     >
       {children}

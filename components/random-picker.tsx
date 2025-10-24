@@ -15,7 +15,7 @@ interface RandomPickerProps {
 }
 
 export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPickerProps) {
-  const { state, callRandomStudent, shuffleQueue, resetQueue } = useClassroom()
+  const { state, callRandomStudent, shuffleQueue, resetQueue, startRandomQuizFromBank } = useClassroom()
   const [isSpinning, setIsSpinning] = useState(false)
   const [spinningName, setSpinningName] = useState("")
   const [spinProgress, setSpinProgress] = useState(0)
@@ -63,6 +63,9 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
           onStudentSelected(pickedStudent.id)
           setSpinningName("")
           setShowConfetti(true)
+
+          // Trigger random quiz from bank and exclude picked student from answering
+          startRandomQuizFromBank(state.currentClass!.id, { excludeStudentId: pickedStudent.id }).catch(() => {})
 
           // Hide confetti after animation
           setTimeout(() => setShowConfetti(false), 3000)
