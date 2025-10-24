@@ -34,6 +34,15 @@ export function ClassHierarchy() {
     return header + lines.join("\n")
   }
 
+  const buildCsvComma = (includeHeader = true) => {
+    if (!state.currentClass) return ""
+    const header = includeHeader ? "Tên,MSSV,Điểm\n" : ""
+    const lines = state.currentClass.students.map(
+      (s) => `${escapeCsv(s.name)},${escapeCsv(s.studentId)},${s.score}`,
+    )
+    return header + lines.join("\n")
+  }
+
   const buildScoresOnly = () => {
     if (!state.currentClass) return ""
     return state.currentClass.students.map((s) => String(s.score ?? 0)).join("\n")
@@ -341,6 +350,9 @@ export function ClassHierarchy() {
             </Button>
             <Button variant="outline" onClick={() => { handleCopy(); setShowExportDialog(false) }} className="justify-start">
               <Copy className="h-4 w-4 mr-2" /> Sao chép vào Clipboard
+            </Button>
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(buildCsvComma(false)); setShowExportDialog(false) }} className="justify-start">
+              <Copy className="h-4 w-4 mr-2" /> Copy CSV (comma)
             </Button>
             <Button variant="outline" onClick={() => { handleCopyScores(); setShowExportDialog(false) }} className="justify-start">
               <Copy className="h-4 w-4 mr-2" /> Copy cột điểm

@@ -30,8 +30,13 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
         const line = lines[i].trim()
         if (!line) continue
 
-        // Strict TAB-separated values: Name<TAB>StudentId
-        const parts = line.split(/\t/).map((part) => part.trim().replace(/"/g, ""))
+        // Detect delimiter: prefer TAB, fallback to comma for CSV
+        let parts = line.split(/\t/)
+        if (parts.length < 2) {
+          // naive CSV split (simple cases); strip quotes
+          parts = line.split(",")
+        }
+        parts = parts.map((part) => part.trim().replace(/"/g, ""))
 
         if (parts.length >= 2 && parts[0] && parts[1]) {
           const student = {
@@ -44,7 +49,7 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
 
       return students
     } catch (err) {
-      throw new Error("Invalid TSV format")
+      throw new Error("Invalid CSV/TSV format")
     }
   }
 
@@ -115,23 +120,23 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
         <DialogHeader>
           <DialogTitle>Import học sinh</DialogTitle>
           <DialogDescription>
-            Import danh sách học sinh từ TSV. Định dạng: Tên học sinh[TAB]Mã số sinh viên
+            Import danh sách học sinh từ CSV/TSV. Định dạng: Tên[TAB]MSSV hoặc Tên,MSSV
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="csv-data">Dữ liệu TSV</Label>
+            <Label htmlFor="csv-data">Dữ liệu CSV/TSV</Label>
             <Textarea
               id="csv-data"
-              placeholder={`Nguyễn Văn An\tSV001\nTrần Thị Bình\tSV002\nLê Minh Cường\tSV003\nPhạm Thị Dung\tSV004`}
+              placeholder={`Nguyễn Văn An\tSV001\nTrần Thị Bình\tSV002\n--hoặc--\nNguyễn Văn An,SV001\nTrần Thị Bình,SV002`}
               value={csvData}
               onChange={(e) => setCsvData(e.target.value)}
               rows={6}
               disabled={isSubmitting}
             />
             <p className="text-xs text-muted-foreground">
-              Mỗi dòng chứa: Tên học sinh[TAB]Mã số sinh viên (phân cách bằng TAB)
+              Mỗi dòng chứa: Tên học sinh + MSSV (phân cách bằng TAB hoặc dấu phẩy)
             </p>
           </div>
 
@@ -159,17 +164,19 @@ export function ImportStudentsDialog({ open, onOpenChange }: ImportStudentsDialo
           <div className="flex justify-between">
             <Button type="button" variant="outline" onClick={handlePreview} disabled={!csvData.trim() || isSubmitting}>
               <Upload className="w-4 h-4 mr-2" />
-              Xem trước
+              Nhập
             </Button>
 
             <div className="flex space-x-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
-              <Button onClick={handleImport} disabled={previewStudents.length === 0 || isSubmitting}>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {isSubmitting ? "Đang import..." : `Import ${previewStudents.length} học sinh`}
-              </Button>
+              {previewStudents.length > 0 && !isSubmitting && (
+                <Button onClick={handleImport}>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Xác nhận
+                </Button>
+              )}
             </div>
           </div>
         </div>
