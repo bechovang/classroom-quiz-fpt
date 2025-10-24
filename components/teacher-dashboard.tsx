@@ -92,50 +92,50 @@ export function TeacherDashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setShowScoringSystem(true)} className="h-8">
-                  <Trophy className="h-4 w-4 mr-2" />
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" onClick={() => setShowScoringSystem(true)} className="h-7 px-2 text-xs">
+                  <Trophy className="h-3 w-3 mr-1" />
                   Edit Score
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowPointsSystem(true)} className="h-8">
-                  <Calculator className="h-4 w-4 mr-2" />
+                <Button variant="ghost" size="sm" onClick={() => setShowPointsSystem(true)} className="h-7 px-2 text-xs">
+                  <Calculator className="h-3 w-3 mr-1" />
                   Edit Points
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowQuizBank(true)} className="h-8">
-                  <BookOpen className="h-4 w-4 mr-2" />
+                <Button variant="ghost" size="sm" onClick={() => setShowQuizBank(true)} className="h-7 px-2 text-xs">
+                  <BookOpen className="h-3 w-3 mr-1" />
                   Quiz Bank
                 </Button>
                 {state.currentClass && (
                   state.currentClass.isQuizLocked ? (
-                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-8">
-                      <Unlock className="h-4 w-4 mr-2" />
+                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => openQuizForEveryone(state.currentClass!.id)} className="h-7 px-2 text-xs">
+                      <Unlock className="h-3 w-3 mr-1" />
                       Unlock Quiz
                     </Button>
                   ) : (
-                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => lockQuiz(state.currentClass!.id)} className="h-8">
-                      <Lock className="h-4 w-4 mr-2" />
+                    <Button id="shortcut-lock-toggle" variant="ghost" size="sm" onClick={() => lockQuiz(state.currentClass!.id)} className="h-7 px-2 text-xs">
+                      <Lock className="h-3 w-3 mr-1" />
                       Lock Quiz
                     </Button>
                   )
                 )}
                 {state.currentClass && (
-                  <Button id="shortcut-reset-answers" variant="ghost" size="sm" onClick={() => clearAnswers(state.currentClass!.id)} className="h-8">
-                    <Eraser className="h-4 w-4 mr-2" />
+                  <Button id="shortcut-reset-answers" variant="ghost" size="sm" onClick={() => clearAnswers(state.currentClass!.id)} className="h-7 px-2 text-xs">
+                    <Eraser className="h-3 w-3 mr-1" />
                     Reset Answers
                   </Button>
                 )}
                 {state.currentClass && (
-                  <Button id="shortcut-reset-scores" variant="ghost" size="sm" onClick={() => resetAllScores(state.currentClass!.id)} className="h-8">
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <Button id="shortcut-reset-scores" variant="ghost" size="sm" onClick={() => resetAllScores(state.currentClass!.id)} className="h-7 px-2 text-xs">
+                    <RotateCcw className="h-3 w-3 mr-1" />
                     Reset Scores
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={handleResetQueue} className="h-8">
-                  <RotateCcw className="h-4 w-4 mr-2" />
+                <Button variant="ghost" size="sm" onClick={handleResetQueue} className="h-7 px-2 text-xs">
+                  <RotateCcw className="h-3 w-3 mr-1" />
                   Reset
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => { logout(); window.location.href = '/'; }} className="h-8">
-                  <LogOut className="h-4 w-4 mr-2" />
+                <Button variant="ghost" size="sm" onClick={() => { logout(); window.location.href = '/'; }} className="h-7 px-2 text-xs">
+                  <LogOut className="h-3 w-3 mr-1" />
                   Logout
                 </Button>
               </div>
