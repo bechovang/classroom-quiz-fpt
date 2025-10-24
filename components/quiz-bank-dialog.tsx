@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
@@ -327,8 +328,18 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
               </div>
             </div>
             <div className="space-y-2 mt-2">
-              <Label>Đáp án đúng (A/B/C/D)</Label>
-              <Input value={correct} onChange={(e) => setCorrect((e.target.value.toUpperCase() as any) || "A")} />
+              <Label>Đáp án đúng</Label>
+              <Select value={correct} onValueChange={(v) => setCorrect(v as any)}>
+                <SelectTrigger size="sm" className="min-w-[140px]">
+                  <SelectValue placeholder="Chọn đáp án" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A">A</SelectItem>
+                  <SelectItem value="B">B</SelectItem>
+                  <SelectItem value="C">C</SelectItem>
+                  <SelectItem value="D">D</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2 mt-2">
               <Label>Giải thích</Label>
