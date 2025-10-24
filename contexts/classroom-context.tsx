@@ -1043,6 +1043,8 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         explanation: row.explanation || undefined,
         tags: row.tags || undefined,
         bankId: row.id,
+        pointsCorrect: (row as any).points_correct ?? undefined,
+        pointsIncorrect: (row as any).points_incorrect ?? undefined,
       }
       dispatch({ type: "CREATE_QUIZ", payload: { classId, quiz } })
 

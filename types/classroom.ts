@@ -32,6 +32,9 @@ export interface Quiz {
   explanation?: string
   tags?: string[]
   bankId?: string
+  // Per-question points from quiz bank
+  pointsCorrect?: number
+  pointsIncorrect?: number
 }
 
 export type QuizStats = {

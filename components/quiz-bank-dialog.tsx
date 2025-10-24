@@ -49,6 +49,8 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
   const [correct, setCorrect] = useState<"A" | "B" | "C" | "D">("A")
   const [explanation, setExplanation] = useState("")
   const [tagsInput, setTagsInput] = useState("")
+  const [pointsCorrect, setPointsCorrect] = useState<number>(1)
+  const [pointsIncorrect, setPointsIncorrect] = useState<number>(1)
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -63,6 +65,8 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     setCorrect("A")
     setExplanation("")
     setTagsInput("")
+    setPointsCorrect(1)
+    setPointsIncorrect(1)
   }
 
   const load = async () => {
@@ -90,6 +94,8 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
         correct_answer: correct,
         explanation: explanation.trim() || null,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+        points_correct: Number.isFinite(pointsCorrect) ? Math.max(0, Math.floor(pointsCorrect)) : 1,
+        points_incorrect: Number.isFinite(pointsIncorrect) ? Math.max(0, Math.floor(pointsIncorrect)) : 1,
       }
       if (!payload.question_text || !payload.options.A || !payload.options.B || !payload.options.C || !payload.options.D) {
         toast({ title: "Thiếu dữ liệu", description: "Vui lòng nhập đầy đủ tất cả các trường" })
@@ -119,6 +125,8 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     setCorrect(row.correct_answer)
     setExplanation(row.explanation || "")
     setTagsInput((row.tags || []).join(", "))
+    setPointsCorrect((row as any).points_correct ?? 1)
+    setPointsIncorrect((row as any).points_incorrect ?? 1)
   }
 
   const handleDelete = async (id: string) => {
@@ -344,6 +352,16 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
             <div className="space-y-2 mt-2">
               <Label>Giải thích</Label>
               <Textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={4} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div>
+                <Label>Điểm đúng (+)</Label>
+                <Input type="number" min={0} value={pointsCorrect} onChange={(e) => setPointsCorrect(parseInt(e.target.value || '0', 10))} />
+              </div>
+              <div>
+                <Label>Điểm sai (trừ)</Label>
+                <Input type="number" min={0} value={pointsIncorrect} onChange={(e) => setPointsIncorrect(parseInt(e.target.value || '0', 10))} />
+              </div>
             </div>
             <div className="space-y-2 mt-2">
               <Label>Tags (phân cách bằng dấu phẩy)</Label>

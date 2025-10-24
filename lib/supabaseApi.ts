@@ -377,12 +377,14 @@ export interface SupabaseQuizBankRow {
   correct_answer: "A" | "B" | "C" | "D"
   explanation: string | null
   tags: string[] | null
+  points_correct: number
+  points_incorrect: number
 }
 
 export async function fetchRandomQuizFromBank(tag?: string): Promise<SupabaseQuizBankRow | null> {
   let query = supabase
     .from("quiz_bank")
-    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags, points_correct, points_incorrect")
 
   if (tag) {
     // Filter by tag if provided
@@ -401,7 +403,7 @@ export async function fetchRandomQuizFromBank(tag?: string): Promise<SupabaseQui
 export async function listQuizBank(params?: { tag?: string; search?: string; limit?: number }): Promise<SupabaseQuizBankRow[]> {
   let query = supabase
     .from("quiz_bank")
-    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags, points_correct, points_incorrect")
     .order("created_at", { ascending: false })
 
   if (params?.tag) {
@@ -426,6 +428,8 @@ export async function createQuizBankItem(payload: {
   correct_answer: "A" | "B" | "C" | "D"
   explanation?: string | null
   tags?: string[] | null
+  points_correct?: number
+  points_incorrect?: number
 }): Promise<SupabaseQuizBankRow> {
   const { data, error } = await supabase
     .from("quiz_bank")
@@ -435,8 +439,10 @@ export async function createQuizBankItem(payload: {
       correct_answer: payload.correct_answer,
       explanation: payload.explanation ?? null,
       tags: payload.tags ?? null,
+      points_correct: payload.points_correct ?? 1,
+      points_incorrect: payload.points_incorrect ?? 1,
     })
-    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags, points_correct, points_incorrect")
     .single()
   if (error) throw error
   return data as SupabaseQuizBankRow
@@ -450,13 +456,15 @@ export async function updateQuizBankItem(
     correct_answer: "A" | "B" | "C" | "D"
     explanation: string | null
     tags: string[] | null
+    points_correct: number
+    points_incorrect: number
   }>,
 ): Promise<SupabaseQuizBankRow> {
   const { data, error } = await supabase
     .from("quiz_bank")
     .update(fields)
     .eq("id", id)
-    .select("id, created_at, question_text, options, correct_answer, explanation, tags")
+    .select("id, created_at, question_text, options, correct_answer, explanation, tags, points_correct, points_incorrect")
     .single()
   if (error) throw error
   return data as SupabaseQuizBankRow
@@ -473,6 +481,8 @@ export async function bulkInsertQuizBank(rows: Array<{
   correct_answer: "A" | "B" | "C" | "D"
   explanation?: string | null
   tags?: string[] | null
+  points_correct?: number
+  points_incorrect?: number
 }>): Promise<number> {
   if (rows.length === 0) return 0
   const { data, error } = await supabase
@@ -484,6 +494,8 @@ export async function bulkInsertQuizBank(rows: Array<{
         correct_answer: r.correct_answer,
         explanation: r.explanation ?? null,
         tags: r.tags ?? null,
+        points_correct: r.points_correct ?? 1,
+        points_incorrect: r.points_incorrect ?? 1,
       })),
     )
     .select("id")

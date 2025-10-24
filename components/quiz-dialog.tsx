@@ -93,9 +93,11 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
       } catch (err) {
         console.error("Failed to record called student's answer:", err)
       }
-      // Auto grade entire class based on answerKey and configured points; also locks quiz in DB
+      // Auto grade entire class based on per-question points if present; fallback to configured points
       const { correctPts, wrongPts } = pointsForCurrent()
-      await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(current.id, answerKey, correctPts, wrongPts))
+      const pc = (quiz as any)?.pointsCorrect ?? correctPts
+      const pw = (quiz as any)?.pointsIncorrect ?? wrongPts
+      await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(current.id, answerKey, pc, pw))
       setChecked(true)
       // Prepare result dialog comparing teacher selection (if any) with the answer key
       if (selected) {
