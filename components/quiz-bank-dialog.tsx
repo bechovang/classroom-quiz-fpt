@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/components/ui/use-toast"
-import { Download, FileSpreadsheet, Plus, Search, Trash2, Upload, Wand2, Pencil } from "lucide-react"
+import { Download, Plus, Search, Trash2, Upload, Wand2, Pencil, Play } from "lucide-react"
 
 import {
   bulkInsertQuizBank,
@@ -23,6 +23,7 @@ import {
 
 import Papa from "papaparse"
 import * as XLSX from "xlsx"
+import { useClassroom } from "@/contexts/classroom-context"
 
 interface QuizBankDialogProps {
   open: boolean
@@ -30,6 +31,7 @@ interface QuizBankDialogProps {
 }
 
 export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
+  const { state, startRandomQuizFromBank } = useClassroom()
   const [items, setItems] = useState<SupabaseQuizBankRow[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
@@ -65,7 +67,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
   const load = async () => {
     setLoading(true)
     try {
-      const rows = await listQuizBank({ search: search || undefined, tag: tag || undefined, limit: 200 })
+      const rows = await listQuizBank({ search: search || undefined, tag: tag || undefined, limit: 500 })
       setItems(rows)
     } catch (e) {
       toast({ title: "Error", description: String(e) })
@@ -124,6 +126,16 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
       await deleteQuizBankItem(id)
       await load()
       toast({ title: "Đã xóa", description: "Câu hỏi đã được xóa" })
+    } catch (e) {
+      toast({ title: "Lỗi", description: String(e) })
+    }
+  }
+
+  const handleUse = async (row: SupabaseQuizBankRow) => {
+    if (!state.currentClass) return
+    try {
+      await startRandomQuizFromBank(state.currentClass.id)
+      onOpenChange(false)
     } catch (e) {
       toast({ title: "Lỗi", description: String(e) })
     }
@@ -199,58 +211,78 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-none w-[92vw] max-w-[92vw] h-[88vh] overflow-auto">
+      <DialogContent className="sm:max-w-none w-[92vw] max-w-[92vw] h-[88vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Quiz Bank</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_380px] gap-4 h-[calc(88vh-4.5rem)]">
+          {/* Left Sidebar */}
+          <div className="border-r pr-4 overflow-auto">
+            <div className="flex items-center gap-2 pb-3 sticky top-0 bg-background pt-1">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Tìm kiếm câu hỏi" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <Input placeholder="Tìm kiếm" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-              <Input placeholder="Tag" value={tag} onChange={(e) => setTag(e.target.value)} className="w-40" />
               <Button onClick={load} variant="outline">Tải</Button>
-              <Button onClick={() => fileInputRef.current?.click()}>
+            </div>
+
+            <div className="space-y-2 pb-3">
+              <div className="text-xs font-medium text-muted-foreground">Tags</div>
+              <div className="flex flex-wrap gap-2">
+                {distinctTags.map((t) => (
+                  <Badge key={t} variant={t === tag ? "default" : "outline"} className="cursor-pointer" onClick={() => setTag(t === tag ? "" : t)}>
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button className="w-full" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="h-4 w-4 mr-2" /> Import
               </Button>
               <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => handleImportFiles(e.target.files)} />
-              <Button variant="ghost" onClick={handleDownloadTemplate}>
+              <Button variant="outline" className="w-full" onClick={handleDownloadTemplate}>
                 <Download className="h-4 w-4 mr-2" /> Template
               </Button>
             </div>
+          </div>
 
-            <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
-              {loading ? (
-                <div className="text-sm text-muted-foreground">Đang tải...</div>
-              ) : items.length === 0 ? (
-                <Card><CardContent className="p-4 text-sm text-muted-foreground">Không có câu hỏi</CardContent></Card>
-              ) : (
-                items.map((row) => (
+          {/* Center List */}
+          <div className="overflow-auto pr-1">
+            {loading ? (
+              <div className="text-sm text-muted-foreground">Đang tải...</div>
+            ) : items.length === 0 ? (
+              <Card><CardContent className="p-4 text-sm text-muted-foreground">Không có câu hỏi</CardContent></Card>
+            ) : (
+              <div className="space-y-3">
+                {items.map((row) => (
                   <Card key={row.id} className="border-primary/10">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                          <div className="font-medium">{row.question_text}</div>
+                        <div className="space-y-2 min-w-0">
+                          <div className="font-medium break-words">{row.question_text}</div>
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div><Badge variant="outline">A</Badge> {row.options?.A}</div>
-                            <div><Badge variant="outline">B</Badge> {row.options?.B}</div>
-                            <div><Badge variant="outline">C</Badge> {row.options?.C}</div>
-                            <div><Badge variant="outline">D</Badge> {row.options?.D}</div>
+                            <div className="truncate"><Badge variant="outline">A</Badge> {row.options?.A}</div>
+                            <div className="truncate"><Badge variant="outline">B</Badge> {row.options?.B}</div>
+                            <div className="truncate"><Badge variant="outline">C</Badge> {row.options?.C}</div>
+                            <div className="truncate"><Badge variant="outline">D</Badge> {row.options?.D}</div>
                           </div>
                           <div className="text-xs text-muted-foreground">Đúng: {row.correct_answer}</div>
-                          {row.explanation && <div className="text-xs text-muted-foreground">Giải thích: {row.explanation}</div>}
+                          {row.explanation && <div className="text-xs text-muted-foreground line-clamp-2">Giải thích: {row.explanation}</div>}
                           <div className="flex flex-wrap gap-1">
                             {(row.tags || []).map((t) => (
                               <Badge key={t} variant="secondary">{t}</Badge>
                             ))}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
                             <Pencil className="h-4 w-4 mr-1" /> Sửa
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => handleUse(row)}>
+                            <Play className="h-4 w-4 mr-1" /> Dùng
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleDelete(row.id)}>
                             <Trash2 className="h-4 w-4 mr-1" /> Xóa
@@ -259,23 +291,24 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-4">
+          {/* Right Editor */}
+          <div className="border-l pl-4 overflow-auto">
             <div className="flex items-center justify-between">
               <div className="font-medium">{formMode === "create" ? "Thêm câu hỏi" : "Sửa câu hỏi"}</div>
               {formMode === "edit" && (
                 <Button variant="ghost" size="sm" onClick={resetForm}><Wand2 className="h-4 w-4 mr-1" /> Mới</Button>
               )}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-3">
               <Label>Câu hỏi</Label>
               <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={6} />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 mt-2">
               <div>
                 <Label>Đáp án A</Label>
                 <Input value={optionA} onChange={(e) => setOptionA(e.target.value)} />
@@ -293,26 +326,25 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
                 <Input value={optionD} onChange={(e) => setOptionD(e.target.value)} />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2">
               <Label>Đáp án đúng (A/B/C/D)</Label>
               <Input value={correct} onChange={(e) => setCorrect((e.target.value.toUpperCase() as any) || "A")} />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2">
               <Label>Giải thích</Label>
               <Textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} rows={4} />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2">
               <Label>Tags (phân cách bằng dấu phẩy)</Label>
               <Input placeholder="math, easy" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sticky bottom-0 bg-background py-3 mt-4">
               <Button onClick={handleSave}><Plus className="h-4 w-4 mr-2" /> {formMode === "create" ? "Thêm" : "Lưu"}</Button>
               <Button variant="outline" onClick={resetForm}>Hủy</Button>
             </div>
 
             <Separator />
-
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground mt-3">
               CSV columns: question, A, B, C, D, correct, explanation, tags
             </div>
           </div>

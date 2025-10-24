@@ -1030,8 +1030,21 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // 2) Open quiz for everyone on server (clear answers + unlock + optionally set blocked_student_id)
       await supaOpenQuizForEveryone(classId, opts?.excludeStudentId)
 
-      // 3) Dispatch local quiz state
-      createQuiz(classId, row.question_text, row.options)
+      // 3) Dispatch local quiz state with bank metadata for explanation/tags
+      const quiz: Quiz = {
+        id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        question: row.question_text,
+        options: row.options,
+        answers: [],
+        isActive: true,
+        createdAt: Date.now(),
+        qrCode: `${typeof window !== "undefined" ? window.location.origin : ""}/student?quiz=${Date.now()}&class=${classId}`,
+        correctAnswer: row.correct_answer,
+        explanation: row.explanation || undefined,
+        tags: row.tags || undefined,
+        bankId: row.id,
+      }
+      dispatch({ type: "CREATE_QUIZ", payload: { classId, quiz } })
 
       // Optionally preload correct answer into local quiz for teacher flow
       if (row.correct_answer) {

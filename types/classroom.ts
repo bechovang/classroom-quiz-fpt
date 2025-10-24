@@ -28,6 +28,10 @@ export interface Quiz {
   isActive: boolean
   createdAt: number
   qrCode?: string
+  // Optional metadata when sourced from quiz bank
+  explanation?: string
+  tags?: string[]
+  bankId?: string
 }
 
 export type QuizStats = {
