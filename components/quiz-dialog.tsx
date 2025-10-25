@@ -96,7 +96,10 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
       // Auto grade entire class based on per-question points if present; fallback to configured points
       const { correctPts, wrongPts } = pointsForCurrent()
       const pc = (quiz as any)?.pointsCorrect ?? correctPts
-      const pw = (quiz as any)?.pointsIncorrect ?? wrongPts
+      // If using quiz-bank points for incorrect answers, convert to a negative deduction automatically
+      const pw = (quiz as any)?.pointsIncorrect != null
+        ? -Math.abs((quiz as any).pointsIncorrect)
+        : wrongPts
       await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(current.id, answerKey, pc, pw))
       setChecked(true)
       // Prepare result dialog comparing teacher selection (if any) with the answer key
