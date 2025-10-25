@@ -176,6 +176,25 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
                     ))}
                   </div>
                 ) : null}
+                {/* Points summary: show per-question points if present, otherwise fallback */}
+                {(() => {
+                  const { correctPts, wrongPts } = pointsForCurrent()
+                  const pc = (quiz as any)?.pointsCorrect ?? correctPts
+                  const pwBase = (quiz as any)?.pointsIncorrect ?? wrongPts
+                  const pwDisplay = Math.abs(pwBase)
+                  return (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <span>Điểm cộng:</span>
+                        <Badge variant="outline">+{pc}</Badge>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span>Điểm trừ:</span>
+                        <Badge variant="outline">-{pwDisplay}</Badge>
+                      </div>
+                    </div>
+                  )
+                })()}
                 {(quiz as any)?.explanation ? (
                   <details className="text-sm" open={checked}>
                     <summary className="cursor-pointer text-muted-foreground">Giải thích</summary>
