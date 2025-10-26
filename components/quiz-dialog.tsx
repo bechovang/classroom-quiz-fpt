@@ -30,6 +30,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
   const [othersChecked, setOthersChecked] = useState(false)
   const [othersResultOpen, setOthersResultOpen] = useState(false)
   const [othersResultText, setOthersResultText] = useState("")
+  const [revealShown, setRevealShown] = useState(false)
 
   const current = state.currentClass
   const quiz = current?.currentQuiz
@@ -49,6 +50,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
     setOthersChecked(false)
     setOthersResultOpen(false)
     setOthersResultText("")
+    setRevealShown(false)
     // Reset answers when opening the quiz dialog to start a fresh round
     if (state.currentClass?.id) {
       resetAnswersAndLock(state.currentClass.id).catch(() => {})
@@ -98,32 +100,33 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
         toast({ title: "Thiếu đáp án đúng", description: "Không có đáp án đúng để chấm." })
         return
       }
-
-      // Record correct answer locally for UI
-      setCorrectAnswer(current.id, answerKey)
-      // If a student was called (blockedStudentId), teacher can select on their behalf even while locked
+      setChecked(true)
+      // Grade only the blocked student using the teacher's selection vs answer key
       try {
-        if (current.blockedStudentId && selected) {
-          await import("@/lib/supabaseApi").then((m) => m.submitAnswerAsTeacher(current.id, current.blockedStudentId as string, selected))
+        if (current.blockedStudentId) {
+          if (!selected) {
+            toast({ title: "Chọn đáp án cho học sinh đang gọi", description: "Nhấn A/B/C/D để chọn hộ học sinh." })
+          } else {
+            // Persist answer and award points based on per-question settings
+            await import("@/lib/supabaseApi").then((m) =>
+              m.submitAnswerAsTeacher(current.id, current.blockedStudentId as string, selected),
+            )
+            const { correctPts, wrongPts } = pointsForCurrent()
+            const pc = (quiz as any)?.pointsCorrect ?? correctPts
+            const pw = (quiz as any)?.pointsIncorrect != null ? -Math.abs((quiz as any).pointsIncorrect) : wrongPts
+            const delta = selected === answerKey ? pc : pw
+            if (delta !== 0) await awardPoints(current.id, current.blockedStudentId as string, delta)
+          }
         }
       } catch (err) {
-        console.error("Failed to record called student's answer:", err)
+        console.error("Failed to grade blocked student:", err)
       }
-      // Auto grade entire class based on per-question points if present; fallback to configured points
-      const { correctPts, wrongPts } = pointsForCurrent()
-      const pc = (quiz as any)?.pointsCorrect ?? correctPts
-      // If using quiz-bank points for incorrect answers, convert to a negative deduction automatically
-      const pw = (quiz as any)?.pointsIncorrect != null
-        ? -Math.abs((quiz as any).pointsIncorrect)
-        : wrongPts
-      await import("@/lib/supabaseApi").then((m) => m.gradeFullQuiz(current.id, answerKey, pc, pw))
-      setChecked(true)
       // Prepare result dialog comparing teacher selection (if any) with the answer key
       if (selected) {
         const isMatch = selected === answerKey
         setResultText(isMatch ? `Bạn chọn ${selected}. Kết quả: Đúng.` : `Bạn chọn ${selected}. Kết quả: Sai. Đáp án: ${answerKey}.`)
       } else {
-        setResultText(`Đã chấm bài. Đáp án: ${answerKey}.`)
+        setResultText(`Đáp án đúng là: ${answerKey}.`)
       }
       setResultOpen(true)
     } catch (e) {
@@ -189,6 +192,15 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
               </Button>
               <Button size="sm" onClick={handleCheck} disabled={!isReady || checked}>
                 <CheckCircle2 className="h-4 w-4 mr-2" /> Check
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setRevealShown(true)}
+                disabled={!isReady || revealShown}
+                title="Show correct answer & explanation"
+              >
+                Show
               </Button>
               <Button
                 size="sm"
@@ -277,7 +289,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
                   )
                 })()}
                 {(quiz as any)?.explanation ? (
-                  <details className="text-sm" open={checked}>
+                  <details className="text-sm" open={revealShown}>
                     <summary className="cursor-pointer text-muted-foreground">Giải thích</summary>
                     <div className="mt-2 whitespace-pre-wrap break-words">{(quiz as any).explanation}</div>
                   </details>
@@ -293,12 +305,18 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
             {isReady ? (
               <div className="grid grid-cols-2 gap-3">
                 {(["A", "B", "C", "D"] as const).map((opt) => {
-                  const isCorrect = checked && selected === opt
+                  const correctKey = (quiz as any)?.correctAnswer || null
+                  const willReveal = revealShown && correctKey
+                  const isCorrect = willReveal ? correctKey === opt : checked && selected === opt
+                  const baseVariant = isCorrect ? "default" : selected === opt ? "default" : "outline"
+                  const colorClass = willReveal
+                    ? (isCorrect ? "bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500" : "bg-red-500/10 hover:bg-red-500/20 text-red-700 border-red-500/40")
+                    : ""
                   return (
                     <Button
                       key={opt}
-                      variant={isCorrect ? "default" : selected === opt ? "default" : "outline"}
-                      className={`h-24 text-left justify-start text-base ${selected === opt ? "ring-2 ring-primary" : ""}`}
+                      variant={baseVariant as any}
+                      className={`h-24 text-left justify-start text-base ${selected === opt ? "ring-2 ring-primary" : ""} ${colorClass}`}
                       disabled={checked || (isLocked && !current?.blockedStudentId)}
                       onClick={() => handleSelect(opt)}
                     >
