@@ -1069,9 +1069,14 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       // 1) Fetch a random quiz row from bank (exclude already used for this class)
       const used = state.usedQuizBankIds?.[classId] || []
-      const row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag, used))
+      let row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag, used))
       if (!row) {
-        throw new Error("Không tìm thấy câu hỏi trong quiz bank")
+        // Exhausted. Reset used list for this class and try again.
+        dispatch({ type: "RESET_USED_BANK_IDS", payload: { classId } as any })
+        row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag, []))
+        if (!row) {
+          throw new Error("Không tìm thấy câu hỏi trong quiz bank")
+        }
       }
 
       // 2) Open quiz for everyone on server (clear answers + unlock + optionally set blocked_student_id)
