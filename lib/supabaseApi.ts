@@ -317,14 +317,18 @@ export async function openQuizForEveryone(sessionId: string, excludedStudentId?:
   const del = await supabase.from("answers").delete().eq("class_session_id", sessionId)
   if (del.error) throw del.error
 
-  // 2) Unlock and reset stats
+  // 2) Unlock and reset stats; only touch blocked_student_id when explicitly provided
+  const updates: Record<string, any> = {
+    is_quiz_locked: false,
+    quiz_stats: { A: 0, B: 0, C: 0, D: 0, total: 0 },
+  }
+  if (typeof excludedStudentId !== "undefined") {
+    updates.blocked_student_id = excludedStudentId || null
+  }
+
   const { data, error } = await supabase
     .from("class_sessions")
-    .update({
-      is_quiz_locked: false,
-      quiz_stats: { A: 0, B: 0, C: 0, D: 0, total: 0 },
-      blocked_student_id: excludedStudentId || null,
-    })
+    .update(updates)
     .eq("id", sessionId)
     .select()
     .single()

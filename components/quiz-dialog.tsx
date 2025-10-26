@@ -12,6 +12,7 @@ import { QRCodeSVG } from "qrcode.react"
 import { useClassroom } from "@/contexts/classroom-context"
 import { Lock, Unlock, QrCode, RefreshCw, CheckCircle2 } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogFooter, AlertDialogHeader as ADHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { supabase } from "@/lib/supabaseClient"
  
 
 interface QuizDialogProps {
@@ -20,12 +21,15 @@ interface QuizDialogProps {
 }
 
 export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
-  const { state, setCorrectAnswer, lockQuiz, openQuizForEveryone, callRandomStudent, startRandomQuizFromBank, clearAnswers, resetAnswersAndLock, clearBlockedStudent } = useClassroom()
+  const { state, setCorrectAnswer, lockQuiz, openQuizForEveryone, callRandomStudent, startRandomQuizFromBank, clearAnswers, resetAnswersAndLock, clearBlockedStudent, awardPoints } = useClassroom()
   const [selected, setSelected] = useState<"A" | "B" | "C" | "D" | null>(null)
   const [qrOpen, setQrOpen] = useState(false)
   const [checked, setChecked] = useState(false)
   const [resultOpen, setResultOpen] = useState(false)
   const [resultText, setResultText] = useState("")
+  const [othersChecked, setOthersChecked] = useState(false)
+  const [othersResultOpen, setOthersResultOpen] = useState(false)
+  const [othersResultText, setOthersResultText] = useState("")
 
   const current = state.currentClass
   const quiz = current?.currentQuiz
@@ -34,11 +38,17 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
   const answered = stats.total || 0
   const isLocked = !!current?.isQuizLocked
   const isReady = Boolean(current && quiz)
+  const blockedName = current?.blockedStudentId
+    ? current?.students.find((s) => s.id === current.blockedStudentId)?.name || null
+    : null
 
   useEffect(() => {
     if (!open) return
     setSelected(null)
     setChecked(false)
+    setOthersChecked(false)
+    setOthersResultOpen(false)
+    setOthersResultText("")
     // Reset answers when opening the quiz dialog to start a fresh round
     if (state.currentClass?.id) {
       resetAnswersAndLock(state.currentClass.id).catch(() => {})
@@ -154,6 +164,12 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
               <span>{current?.name || "Class"}</span>
               <span className="text-muted-foreground">·</span>
               <span>Câu hiện tại: {((current?.currentQuestionIndex ?? 0) + 1)}</span>
+              {blockedName && (
+                <span className="text-muted-foreground">·</span>
+              )}
+              {blockedName && (
+                <Badge variant="secondary" className="whitespace-nowrap">Đang gọi: {blockedName}</Badge>
+              )}
             </DialogTitle>
             <div className="flex items-center gap-2">
               <Popover open={qrOpen} onOpenChange={setQrOpen}>
@@ -173,6 +189,56 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
               </Button>
               <Button size="sm" onClick={handleCheck} disabled={!isReady || checked}>
                 <CheckCircle2 className="h-4 w-4 mr-2" /> Check
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const current = state.currentClass
+                  if (!isReady || !current) return
+                  const answerKey = (quiz as any)?.correctAnswer || selected
+                  if (!answerKey) {
+                    toast({ title: "Chọn đáp án đúng trước", description: "Nhấn A/B/C/D để chọn hoặc dùng đáp án từ bank." })
+                    return
+                  }
+                  try {
+                    // Determine per-question points (auto-negative for wrong when from bank)
+                    const { correctPts, wrongPts } = pointsForCurrent()
+                    const pc = (quiz as any)?.pointsCorrect ?? correctPts
+                    const pw = (quiz as any)?.pointsIncorrect != null ? -Math.abs((quiz as any).pointsIncorrect) : wrongPts
+
+                    // Fetch all answers for this session
+                    const { data: rows, error } = await supabase
+                      .from("answers")
+                      .select("student_id, selected_answer")
+                      .eq("class_session_id", current.id)
+                    if (error) throw error
+
+                    const blockedId = current.blockedStudentId || null
+                    const others = (rows || []).filter((r: any) => r.student_id !== blockedId)
+                    const correctIds = others.filter((r: any) => r.selected_answer === answerKey).map((r: any) => r.student_id)
+                    const wrongIds = others.filter((r: any) => r.selected_answer !== answerKey).map((r: any) => r.student_id)
+                    const unansweredCount = (current.students?.length || 0) > 0
+                      ? current.students.filter((s) => s && s.id !== blockedId && !(others || []).some((r: any) => r.student_id === s.id)).length
+                      : 0
+
+                    await Promise.all([
+                      ...correctIds.map((sid: string) => awardPoints(current.id, sid, pc)),
+                      ...(pw !== 0 ? wrongIds.map((sid: string) => awardPoints(current.id, sid, pw)) : []),
+                    ])
+
+                    setOthersChecked(true)
+                    const pwDisplay = Math.abs(pw)
+                    setOthersResultText(`Đúng: ${correctIds.length} (+${pc})\nSai: ${wrongIds.length} (-${pwDisplay})\nKhông trả lời: ${unansweredCount}`)
+                    setOthersResultOpen(true)
+                  } catch (e) {
+                    toast({ title: "Error", description: String(e) })
+                  }
+                }}
+                disabled={!isReady || othersChecked}
+                title="Check Ans Others"
+              >
+                Check Ans Others
               </Button>
             </div>
           </div>
@@ -286,6 +352,19 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
           <div className="text-sm">{resultText}</div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setResultOpen(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Result dialog for "Check Ans Others" */}
+      <AlertDialog open={othersResultOpen} onOpenChange={setOthersResultOpen}>
+        <AlertDialogContent>
+          <ADHeader>
+            <AlertDialogTitle>Kết quả (các học sinh khác)</AlertDialogTitle>
+          </ADHeader>
+          <div className="text-sm whitespace-pre-wrap">{othersResultText}</div>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOthersResultOpen(false)}>OK</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
