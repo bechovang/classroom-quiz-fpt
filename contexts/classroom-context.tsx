@@ -53,6 +53,8 @@ type ClassroomAction =
   | { type: "SUBMIT_ANSWER"; payload: { classId: string; answer: QuizAnswer } }
   | { type: "SET_CORRECT_ANSWER"; payload: { classId: string; correctAnswer: "A" | "B" | "C" | "D" } }
   | { type: "END_QUIZ"; payload: { classId: string } }
+  | { type: "ADD_USED_BANK_ID"; payload: { classId: string; bankId: string } }
+  | { type: "RESET_USED_BANK_IDS"; payload: { classId: string } }
 
 const initialState: ClassroomState = {
   currentClass: null,
