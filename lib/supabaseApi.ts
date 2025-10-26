@@ -508,6 +508,18 @@ export async function deleteQuizBankItem(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function deleteAllQuizBankItems(): Promise<number> {
+  // Get count first for reporting
+  const { count, error: countErr } = await supabase
+    .from("quiz_bank")
+    .select("id", { count: "exact", head: true })
+  if (countErr) throw countErr
+
+  const { error } = await supabase.from("quiz_bank").delete().neq("id", "")
+  if (error) throw error
+  return count || 0
+}
+
 export async function bulkInsertQuizBank(rows: Array<{
   question_text: string
   options: { A: string; B: string; C: string; D: string }

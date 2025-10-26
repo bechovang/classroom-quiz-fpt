@@ -17,6 +17,7 @@ import {
   bulkInsertQuizBank,
   createQuizBankItem,
   deleteQuizBankItem,
+  deleteAllQuizBankItems,
   listQuizBank,
   updateQuizBankItem,
   type SupabaseQuizBankRow,
@@ -308,6 +309,22 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
                   <Download className="h-4 w-4 mr-2" /> Export Excel
                 </Button>
               </div>
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={async () => {
+                  if (!confirm("Xóa TẤT CẢ câu hỏi trong Quiz Bank?")) return
+                  try {
+                    const deleted = await deleteAllQuizBankItems()
+                    await load()
+                    toast({ title: "Đã xóa", description: `Đã xóa ${deleted} câu hỏi.` })
+                  } catch (e) {
+                    toast({ title: "Lỗi", description: String(e) })
+                  }
+                }}
+              >
+                Clear All Quiz
+              </Button>
             </div>
           </div>
 
