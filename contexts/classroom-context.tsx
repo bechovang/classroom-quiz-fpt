@@ -180,11 +180,12 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
     }
 
     case "ADD_STUDENT": {
-      const updatedClasses = state.classes.map((cls) =>
-        cls.id === action.payload.classId
-          ? { ...cls, students: [...cls.students, action.payload.student], updatedAt: Date.now() }
-          : cls,
-      )
+      const updatedClasses = state.classes.map((cls) => {
+        if (cls.id !== action.payload.classId) return cls
+        const exists = cls.students.some((s) => s.id === action.payload.student.id)
+        if (exists) return cls
+        return { ...cls, students: [...cls.students, action.payload.student], updatedAt: Date.now() }
+      })
       const updatedCurrentClass =
         state.currentClass?.id === action.payload.classId
           ? {
@@ -739,7 +740,12 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         classId,
         students.map((s) => ({ name: s.name.trim(), code: s.studentId.trim() })),
       )
-      created.map(mapStudent).forEach((student) => {
+      // Merge without duplicating if realtime INSERTs arrive
+      const newOnes = created.map(mapStudent)
+      const current = state.classes.find((c) => c.id === classId)
+      const existingIds = new Set((current?.students || []).map((s) => s.id))
+      const toAdd = newOnes.filter((s) => !existingIds.has(s.id))
+      toAdd.forEach((student) => {
         dispatch({ type: "ADD_STUDENT", payload: { classId, student } })
       })
     } catch (error) {
