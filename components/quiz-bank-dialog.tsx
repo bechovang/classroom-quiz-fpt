@@ -177,7 +177,34 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     const file = files[0]
     try {
       if (file.name.toLowerCase().endsWith(".csv")) {
-        const text = await file.text()
+        // Robust decode for Vietnamese (handle UTF-8/UTF-16/Windows-1258/1252)
+        const ab = await file.arrayBuffer()
+        const tryDecode = (label: string) => {
+          try {
+            // @ts-ignore - TextDecoder supports these labels in browsers
+            const dec = new TextDecoder(label as any, { fatal: false })
+            let s = dec.decode(new Uint8Array(ab))
+            if (s.charCodeAt(0) === 0xfeff) s = s.slice(1) // strip BOM
+            return s
+          } catch {
+            return ""
+          }
+        }
+        const candidates = ["utf-8", "utf-16le", "windows-1258", "windows-1252"]
+        let best = ""
+        let bestScore = Number.POSITIVE_INFINITY
+        for (const enc of candidates) {
+          const s = tryDecode(enc)
+          if (!s) continue
+          const replacement = (s.match(/�/g) || []).length
+          const viet = (s.match(/[\u00C0-\u1EF9]/g) || []).length
+          const score = replacement - viet * 0.5
+          if (score < bestScore) {
+            bestScore = score
+            best = s
+          }
+        }
+        const text = best || tryDecode("utf-8")
         const rows = parseCsvText(text)
         const inserted = await bulkInsertQuizBank(rows)
         toast({ title: "Import CSV", description: `Đã nhập ${inserted} câu hỏi` })
@@ -206,7 +233,8 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     const csv = Papa.unparse([
       { question: "1 + 1 = ?", A: "1", B: "2", C: "3", D: "4", correct: "B", explanation: "1+1=2", tags: "math, basic", points_correct: 10, points_incorrect: 2 },
     ])
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    // Prepend BOM for Excel to render Vietnamese correctly
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -234,7 +262,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     try {
       const rows = buildExportRows()
       const csv = Papa.unparse(rows)
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
