@@ -7,9 +7,9 @@ import { ClassHierarchy } from "@/components/class-hierarchy"
 import { RandomPicker } from "@/components/random-picker"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser, BookOpen } from "lucide-react"
+import { RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser, BookOpen } from "lucide-react"
 import { useEffect, useState } from "react"
-import { ScoringSystem } from "@/components/scoring-system"
+// import { ScoringSystem } from "@/components/scoring-system"
 import { PointsSystem } from "@/components/points-system"
 import { QuizBankDialog } from "@/components/quiz-bank-dialog"
 import { QuizDialog } from "@/components/quiz-dialog"
@@ -18,7 +18,7 @@ export function TeacherDashboard() {
   const { state, resetQueue, lockQuiz, openQuizForEveryone, clearAnswers, resetAllScores } = useClassroom()
   const { logout } = useAuth()
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
-  const [showScoringSystem, setShowScoringSystem] = useState(false)
+  // const [showScoringSystem, setShowScoringSystem] = useState(false)
   const [showPointsSystem, setShowPointsSystem] = useState(false)
   const [showQuizBank, setShowQuizBank] = useState(false)
   const [showQuizDialog, setShowQuizDialog] = useState(false)
@@ -92,10 +92,7 @@ export function TeacherDashboard() {
               </div>
 
               <div className="flex items-center gap-1.5">
-                <Button variant="ghost" size="sm" onClick={() => setShowScoringSystem(true)} className="h-7 px-2 text-xs">
-                  <Trophy className="h-3 w-3 mr-1" />
-                  Edit Score
-                </Button>
+                {/* Edit Score removed as requested */}
                 <Button variant="ghost" size="sm" onClick={() => setShowPointsSystem(true)} className="h-7 px-2 text-xs">
                   <Calculator className="h-3 w-3 mr-1" />
                   Edit Points
@@ -152,7 +149,7 @@ export function TeacherDashboard() {
       </div>
 
       {/* Dialogs */}
-      <ScoringSystem open={showScoringSystem} onOpenChange={setShowScoringSystem} />
+      {/* <ScoringSystem open={showScoringSystem} onOpenChange={setShowScoringSystem} /> */}
       <PointsSystem open={showPointsSystem} onOpenChange={setShowPointsSystem} />
       <QuizBankDialog open={showQuizBank} onOpenChange={setShowQuizBank} />
       <QuizDialog open={showQuizDialog} onOpenChange={setShowQuizDialog} />
