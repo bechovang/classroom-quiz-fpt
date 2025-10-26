@@ -152,7 +152,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
 
   const parseCsvText = (text: string) => {
     const parsed = Papa.parse(text, { header: true, skipEmptyLines: true })
-    const out: Array<{ question_text: string; options: any; correct_answer: "A" | "B" | "C" | "D"; explanation?: string | null; tags?: string[] | null }> = []
+    const out: Array<{ question_text: string; options: any; correct_answer: "A" | "B" | "C" | "D"; explanation?: string | null; tags?: string[] | null; points_correct?: number; points_incorrect?: number }> = []
     for (const row of parsed.data as any[]) {
       const q = (row.question || row.question_text || "").trim()
       const A = (row.A || row.optionA || row.option_a || "").trim()
@@ -162,9 +162,11 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
       const correct = (row.correct || row.correct_answer || "A").trim().toUpperCase()
       const explanation = (row.explanation || "").trim()
       const tagsArr = (row.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean)
+      const pc = Number.isFinite(Number(row.points_correct ?? row.pointsCorrect)) ? Math.max(0, Math.floor(Number(row.points_correct ?? row.pointsCorrect))) : 1
+      const pi = Number.isFinite(Number(row.points_incorrect ?? row.pointsIncorrect)) ? Math.max(0, Math.floor(Number(row.points_incorrect ?? row.pointsIncorrect))) : 1
       if (!q || !A || !B || !C || !D) continue
       if (!["A", "B", "C", "D"].includes(correct)) continue
-      out.push({ question_text: q, options: { A, B, C, D }, correct_answer: correct as any, explanation: explanation || null, tags: tagsArr.length ? tagsArr : null })
+      out.push({ question_text: q, options: { A, B, C, D }, correct_answer: correct as any, explanation: explanation || null, tags: tagsArr.length ? tagsArr : null, points_correct: pc, points_incorrect: pi })
     }
     return out
   }
@@ -201,7 +203,7 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
 
   const handleDownloadTemplate = () => {
     const csv = Papa.unparse([
-      { question: "1 + 1 = ?", A: "1", B: "2", C: "3", D: "4", correct: "B", explanation: "1+1=2", tags: "math, basic" },
+      { question: "1 + 1 = ?", A: "1", B: "2", C: "3", D: "4", correct: "B", explanation: "1+1=2", tags: "math, basic", points_correct: 10, points_incorrect: 2 },
     ])
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -210,6 +212,49 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
     a.download = "quiz_bank_template.csv"
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const buildExportRows = () => {
+    return items.map((row) => ({
+      question: row.question_text,
+      A: row.options?.A ?? "",
+      B: row.options?.B ?? "",
+      C: row.options?.C ?? "",
+      D: row.options?.D ?? "",
+      correct: row.correct_answer,
+      explanation: row.explanation ?? "",
+      tags: (row.tags || []).join(", "),
+      points_correct: (row as any).points_correct ?? 1,
+      points_incorrect: (row as any).points_incorrect ?? 1,
+    }))
+  }
+
+  const handleExportCsv = () => {
+    try {
+      const rows = buildExportRows()
+      const csv = Papa.unparse(rows)
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "quiz_bank_export.csv"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast({ title: "Lỗi", description: String(e) })
+    }
+  }
+
+  const handleExportExcel = () => {
+    try {
+      const rows = buildExportRows()
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "QuizBank")
+      XLSX.writeFile(wb, "quiz_bank_export.xlsx")
+    } catch (e) {
+      toast({ title: "Lỗi", description: String(e) })
+    }
   }
 
   const distinctTags = useMemo(() => {
@@ -255,6 +300,14 @@ export function QuizBankDialog({ open, onOpenChange }: QuizBankDialogProps) {
               <Button variant="outline" className="w-full" onClick={handleDownloadTemplate}>
                 <Download className="h-4 w-4 mr-2" /> Template
               </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={handleExportCsv}>
+                  <Download className="h-4 w-4 mr-2" /> Export CSV
+                </Button>
+                <Button variant="outline" onClick={handleExportExcel}>
+                  <Download className="h-4 w-4 mr-2" /> Export Excel
+                </Button>
+              </div>
             </div>
           </div>
 
