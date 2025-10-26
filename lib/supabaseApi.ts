@@ -414,17 +414,20 @@ export interface SupabaseQuizBankRow {
   points_incorrect: number
 }
 
-export async function fetchRandomQuizFromBank(tag?: string): Promise<SupabaseQuizBankRow | null> {
+export async function fetchRandomQuizFromBank(tag?: string, excludeIds?: string[]): Promise<SupabaseQuizBankRow | null> {
   let query = supabase
     .from("quiz_bank")
     .select("id, created_at, question_text, options, correct_answer, explanation, tags, points_correct, points_incorrect")
 
   if (tag) {
-    // Filter by tag if provided
     query = query.contains("tags", [tag]) as any
   }
 
-  // Fetch up to 50 rows then pick a random client-side to avoid slow ORDER BY RANDOM()
+  if (excludeIds && excludeIds.length > 0) {
+    const inList = `(${excludeIds.map((id) => `"${id}"`).join(",")})`
+    query = query.not("id", "in", inList) as any
+  }
+
   const { data, error } = await query.limit(50)
   if (error) throw error
   const rows = (data || []) as SupabaseQuizBankRow[]

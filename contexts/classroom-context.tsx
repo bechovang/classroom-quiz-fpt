@@ -28,6 +28,7 @@ interface ClassroomState {
   classes: ClassData[]
   isLoading: boolean
   error: string | null
+  usedQuizBankIds?: Record<string, string[]>
 }
 
 type ClassroomAction =
@@ -58,6 +59,7 @@ const initialState: ClassroomState = {
   classes: [],
   isLoading: false,
   error: null,
+  usedQuizBankIds: {},
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -453,6 +455,20 @@ const classroomReducer = (state: ClassroomState, action: ClassroomAction): Class
         classes: updatedClasses,
         currentClass: updatedCurrentClass,
       }
+    }
+
+    case "ADD_USED_BANK_ID": {
+      const { classId, bankId } = (action as any).payload as { classId: string; bankId: string }
+      const prev = state.usedQuizBankIds?.[classId] || []
+      const next = prev.includes(bankId) ? prev : [...prev, bankId]
+      return { ...state, usedQuizBankIds: { ...(state.usedQuizBankIds || {}), [classId]: next } }
+    }
+
+    case "RESET_USED_BANK_IDS": {
+      const { classId } = (action as any).payload as { classId: string }
+      const next = { ...(state.usedQuizBankIds || {}) }
+      delete next[classId]
+      return { ...state, usedQuizBankIds: next }
     }
 
     default:
@@ -1049,8 +1065,9 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const startRandomQuizFromBank = async (classId: string, opts?: { tag?: string; excludeStudentId?: string }) => {
     try {
-      // 1) Fetch a random quiz row from bank
-      const row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag))
+      // 1) Fetch a random quiz row from bank (exclude already used for this class)
+      const used = state.usedQuizBankIds?.[classId] || []
+      const row = await import("@/lib/supabaseApi").then((m) => m.fetchRandomQuizFromBank(opts?.tag, used))
       if (!row) {
         throw new Error("Không tìm thấy câu hỏi trong quiz bank")
       }
@@ -1078,6 +1095,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         pointsIncorrect: (row as any).points_incorrect ?? undefined,
       }
       dispatch({ type: "CREATE_QUIZ", payload: { classId, quiz } })
+      dispatch({ type: "ADD_USED_BANK_ID", payload: { classId, bankId: row.id } })
 
       // Optionally preload correct answer into local quiz for teacher flow
       if (row.correct_answer) {
