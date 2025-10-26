@@ -124,9 +124,17 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
       // Prepare result dialog comparing teacher selection (if any) with the answer key
       if (selected) {
         const isMatch = selected === answerKey
-        setResultText(isMatch ? `Bạn chọn ${selected}. Kết quả: Đúng.` : `Bạn chọn ${selected}. Kết quả: Sai. Đáp án: ${answerKey}.`)
+        const { correctPts, wrongPts } = pointsForCurrent()
+        const pc = (quiz as any)?.pointsCorrect ?? correctPts
+        const pw = (quiz as any)?.pointsIncorrect != null ? -Math.abs((quiz as any).pointsIncorrect) : wrongPts
+        if (isMatch) {
+          setResultText(`Chúc mừng! Bạn đã trả lời đúng, nhận ${pc} điểm.`)
+        } else {
+          const lost = Math.abs(pw)
+          setResultText(`Rất tiếc! Bạn đã trả lời sai, bạn mất ${lost} điểm.`)
+        }
       } else {
-        setResultText(`Đáp án đúng là: ${answerKey}.`)
+        setResultText(`Đã ghi nhận đáp án đúng cho vòng này.`)
       }
       setResultOpen(true)
     } catch (e) {
@@ -367,7 +375,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
           <ADHeader>
             <AlertDialogTitle>Kết quả</AlertDialogTitle>
           </ADHeader>
-          <div className="text-sm">{resultText}</div>
+          <div className={`text-sm ${selected ? ((quiz as any)?.correctAnswer || selected) === selected ? 'text-amber-600' : 'text-red-600' : ''}`}>{resultText}</div>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setResultOpen(false)}>OK</AlertDialogAction>
           </AlertDialogFooter>
