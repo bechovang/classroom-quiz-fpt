@@ -265,43 +265,51 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-[30%_40%_30%] gap-6 h-[calc(88vh-4.5rem)] px-1 pb-2 overflow-hidden">
-          {/* Left: Question */}
-          <div className="overflow-auto space-y-3">
+          {/* Left: Question (2/3) + Info (1/3) */}
+          <div className="flex flex-col h-full min-h-0">
             {isReady ? (
               <>
-                <div className="text-xl font-semibold leading-relaxed break-words">{quiz!.question}</div>
-                {(quiz as any)?.tags?.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(quiz as any).tags.map((t: string) => (
-                      <Badge key={t} variant="secondary">{t}</Badge>
-                    ))}
+                {/* Question + tags (2/3) */}
+                <div className="flex-[2] min-h-0 overflow-auto space-y-2 pr-1">
+                  <div className="text-lg font-semibold leading-relaxed whitespace-pre-wrap break-words">
+                    {quiz!.question}
                   </div>
-                ) : null}
-                {/* Points summary: show per-question points if present, otherwise fallback */}
-                {(() => {
-                  const { correctPts, wrongPts } = pointsForCurrent()
-                  const pc = (quiz as any)?.pointsCorrect ?? correctPts
-                  const pwBase = (quiz as any)?.pointsIncorrect ?? wrongPts
-                  const pwDisplay = Math.abs(pwBase)
-                  return (
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <span>Điểm cộng:</span>
-                        <Badge variant="outline">+{pc}</Badge>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>Điểm trừ:</span>
-                        <Badge variant="outline">-{pwDisplay}</Badge>
-                      </div>
+                  {(quiz as any)?.tags?.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(quiz as any).tags.map((t: string) => (
+                        <Badge key={t} variant="secondary">{t}</Badge>
+                      ))}
                     </div>
-                  )
-                })()}
-                {(quiz as any)?.explanation ? (
-                  <details className="text-sm" open={revealShown}>
-                    <summary className="cursor-pointer text-muted-foreground">Giải thích</summary>
-                    <div className="mt-2 whitespace-pre-wrap break-words">{(quiz as any).explanation}</div>
-                  </details>
-                ) : null}
+                  ) : null}
+                </div>
+
+                {/* Points/Explanation (1/3) */}
+                <div className="flex-[1] min-h-0 overflow-auto space-y-2 pt-2 pr-1">
+                  {(() => {
+                    const { correctPts, wrongPts } = pointsForCurrent()
+                    const pc = (quiz as any)?.pointsCorrect ?? correctPts
+                    const pwBase = (quiz as any)?.pointsIncorrect ?? wrongPts
+                    const pwDisplay = Math.abs(pwBase)
+                    return (
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <span>Điểm cộng:</span>
+                          <Badge variant="outline">+{pc}</Badge>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>Điểm trừ:</span>
+                          <Badge variant="outline">-{pwDisplay}</Badge>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  {(quiz as any)?.explanation ? (
+                    <details className="text-sm" open={revealShown}>
+                      <summary className="cursor-pointer text-muted-foreground">Giải thích</summary>
+                      <div className="mt-2 whitespace-pre-wrap break-words">{(quiz as any).explanation}</div>
+                    </details>
+                  ) : null}
+                </div>
               </>
             ) : (
               <div className="text-sm text-muted-foreground">Waiting for quiz…</div>
@@ -311,7 +319,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
           {/* Center: Options */}
           <div className="overflow-auto">
             {isReady ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-2">
                 {(["A", "B", "C", "D"] as const).map((opt) => {
                   const correctKey = (quiz as any)?.correctAnswer || null
                   const willReveal = revealShown && correctKey
@@ -324,12 +332,12 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
                     <Button
                       key={opt}
                       variant={baseVariant as any}
-                      className={`h-24 text-left justify-start text-base ${selected === opt ? "ring-2 ring-primary" : ""} ${colorClass}`}
+                      className={`w-full min-w-0 min-h-[2.75rem] py-2 text-sm text-left justify-start items-center ${selected === opt ? "ring-2 ring-primary" : ""} ${colorClass}`}
                       disabled={checked || (isLocked && !current?.blockedStudentId)}
                       onClick={() => handleSelect(opt)}
                     >
-                      <Badge variant="outline" className="mr-3">{opt}</Badge>
-                      <span className="line-clamp-2 break-words">{quiz!.options[opt]}</span>
+                      <Badge variant="outline" className="mr-2 mt-0.5 shrink-0">{opt}</Badge>
+                      <span className="flex-1 min-w-0 whitespace-pre-wrap break-words text-left">{quiz!.options[opt]}</span>
                     </Button>
                   )
                 })}
