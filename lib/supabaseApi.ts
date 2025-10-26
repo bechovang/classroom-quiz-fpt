@@ -178,6 +178,22 @@ export async function submitAnswer(
   if (error) throw error
 }
 
+// Submit an answer bypassing the client-side lock check (teacher-driven assignment)
+export async function submitAnswerAsTeacher(
+  sessionId: string,
+  studentId: string,
+  selected: "A" | "B" | "C" | "D",
+): Promise<void> {
+  const { error } = await supabase
+    .from("answers")
+    .upsert(
+      [{ class_session_id: sessionId, student_id: studentId, selected_answer: selected }],
+      { onConflict: "class_session_id,student_id" },
+    )
+
+  if (error) throw error
+}
+
 // Clear all answers for a session (does not change lock state)
 export async function clearAnswers(sessionId: string): Promise<void> {
   const { error } = await supabase.from("answers").delete().eq("class_session_id", sessionId)
@@ -322,6 +338,19 @@ export async function lockCurrentQuiz(sessionId: string): Promise<SupabaseClassS
   const { data, error } = await supabase
     .from("class_sessions")
     .update({ is_quiz_locked: true })
+    .eq("id", sessionId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as SupabaseClassSession
+}
+
+// Clear the blocked student so no one is blocked from answering
+export async function clearBlockedStudent(sessionId: string): Promise<SupabaseClassSession> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .update({ blocked_student_id: null })
     .eq("id", sessionId)
     .select()
     .single()

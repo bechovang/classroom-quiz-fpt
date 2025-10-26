@@ -559,6 +559,12 @@ const measurePerformance = (name: string, fn: () => void) => {
   - `quiz_stats jsonb` (e.g., { A: 0, B: 0, C: 0, D: 0, total: 0 })
   - `blocked_student_id uuid null`
 - `answers` rows aggregate into `quiz_stats` (trigger/function recommended) whenever answers change.
+- `quiz_bank` must include:
+  - `question_text text not null`
+  - `options jsonb not null` (A/B/C/D)
+  - `correct_answer char(1) not null`
+  - `explanation text null`, `tags text[] null`
+  - `points_correct int not null default 1`, `points_incorrect int not null default 1` (stored positive)
 - RLS should:
   - Block inserts/updates to `answers` when `is_quiz_locked = true`.
   - Allow teacher to update `is_quiz_locked`, `quiz_stats`, and `blocked_student_id`.
@@ -570,6 +576,9 @@ const measurePerformance = (name: string, fn: () => void) => {
 - Preferred: `grade_full_quiz(session_id_param uuid, correct_answer_param char(1), points_correct_param int, points_wrong_param int)` to award correct and apply wrong deltas in a single transaction.
 - Fallback: `grade_and_award_points(session_id_param uuid, correct_answer_param char(1), points_param int)` for correct answers, then client updates wrong answers individually.
 
+Notes:
+- Frontend passes `points_wrong_param` as a negative value automatically when using quiz-bank `points_incorrect`.
+
 ### Frontend Contracts
 - Context methods:
   - `openQuizForEveryone(sessionId, excludedStudentId?)` → unlocks, resets stats, and sets `blocked_student_id`.
@@ -577,6 +586,7 @@ const measurePerformance = (name: string, fn: () => void) => {
   - `clearAnswers(sessionId)` → deletes all `answers` for the session.
   - `resetAllScores(sessionId)` → sets all `students.score = 0` for the session.
   - `gradeQuizAndAwardPoints(sessionId, correctAnswer, points)` → RPC call.
+  - `startRandomQuizFromBank(classId, opts?)` → unlock + clear answers, select a random bank question, set `currentQuiz` with `pointsCorrect/pointsIncorrect`.
   - `setQuestionPoints(classId, points[])`, `setWrongPoints(classId, points[])` → persist per-question configuration in context.
 
 ### Keyboard Shortcuts (Implementation)
@@ -587,7 +597,12 @@ const measurePerformance = (name: string, fn: () => void) => {
 - Ensure components keep these IDs if refactoring, or update the handler accordingly.
 
 ### Import/Export (Points & Class List)
-- Points Import accepts lines in the form: `positive, wrong` (comma/space/tab delimited)
+#### Quiz Bank Import/Export
+- CSV/Excel columns: `question, A, B, C, D, correct, explanation, tags, points_correct, points_incorrect`
+- `points_incorrect` is stored positive; frontend deducts it automatically.
+
+#### Per-question Points (Fallback) Import
+- Accepts lines in the form: `positive, wrong` (comma/space/tab delimited)
   - Example:
 ```
 1, 0

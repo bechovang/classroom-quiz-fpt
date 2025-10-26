@@ -43,9 +43,18 @@ Ngô Phương Linh	21120081
 
 ---
 
-## Edit Points (điểm từng câu, wrong points)
-- Mở "Edit Points" để nhập nhanh điểm cộng và điểm trừ của từng câu
-- Import/Export dạng từng dòng: `được cộng <tab> bị trừ` (ngăn cách bởi tab), ví dụ:
+## Quiz Bank & Điểm từng câu
+- Sử dụng "Quiz Bank" để quản lý ngân hàng câu hỏi (CRUD): câu hỏi, A/B/C/D, giải thích, tags
+- Mỗi câu có 2 cột điểm:
+  - `points_correct`: điểm cộng khi trả lời đúng
+  - `points_incorrect`: mức phạt khi trả lời sai (lưu là số dương; hệ thống tự trừ)
+- Import/Export CSV/Excel cho Quiz Bank với các cột:
+  `question, A, B, C, D, correct, explanation, tags, points_correct, points_incorrect`
+- Khi chạy quiz từ bank, hệ thống ưu tiên dùng điểm của câu hỏi đó; nếu không có thì dùng "Edit Points" theo chỉ số câu hiện tại.
+
+## Edit Points (fallback theo chỉ số câu)
+- Mở "Edit Points" để nhập nhanh điểm cộng và điểm trừ theo chỉ số câu (áp dụng khi không dùng điểm của Quiz Bank)
+- Import/Export dạng từng dòng: `được cộng <tab> bị trừ`, ví dụ:
 ```
 10    -10
 10    -10
@@ -77,12 +86,13 @@ Ngô Phương Linh	21120081
 - Học sinh vào Student Portal, tìm tên (có tìm theo tên hoặc mssv) và chọn đáp án A/B/C/D
 - Nếu lỡ chọn đáp án và muốn xóa, bấm "Xóa câu trả lời"
 
-### 5) Khóa/mở quiz và chốt đáp án
-- Nhấn "Khóa ngay" (Lock) để dừng nhập câu trả lời
-- Giáo viên chọn đáp án đúng, sau đó hệ thống sẽ tự cập nhật điểm:
-  - Ai chọn đúng được cộng điểm
-  - Ai chọn sai sẽ bị trừ điểm  
-  - Ai không chọn: không thay đổi điểm
+### 5) Khóa/mở quiz và chốt đáp án (Check)
+- Nhấn "Lock" để dừng nhập (tuỳ chọn)
+- Bấm "Check": hệ thống tự chấm theo đáp án đúng đã khai báo (ưu tiên từ Quiz Bank), tự động:
+  - Cộng `points_correct` cho học sinh trả lời đúng
+  - Trừ `points_incorrect` cho học sinh trả lời sai (tự chuyển thành số âm)
+  - Không đổi điểm cho học sinh không trả lời
+- Phần "Giải thích" sẽ tự mở sau khi Check; và hiển thị nhãn "Điểm cộng/Điểm trừ" ngay dưới câu hỏi
 
 ### 6) Reset nhanh
 - **Reset Answers**: xóa các câu trả lời của câu hiện tại

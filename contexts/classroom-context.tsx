@@ -485,10 +485,12 @@ const ClassroomContext = createContext<{
   endQuiz: (classId: string, correctAnswer: "A" | "B" | "C" | "D") => void
   openQuizForEveryone: (classId: string, excludedStudentId?: string) => Promise<void>
   lockQuiz: (classId: string) => Promise<void>
+  clearBlockedStudent: (classId: string) => Promise<void>
   setQuestionPoints: (classId: string, points: number[]) => void
   setCurrentQuestionIndex: (classId: string, index: number) => void
   setWrongPoints: (classId: string, points: number[]) => void
   clearAnswers: (classId: string) => Promise<void>
+  resetAnswersAndLock: (classId: string) => Promise<void>
   resetAllScores: (classId: string) => Promise<void>
   saveToLocalStorage: () => void
   loadFromLocalStorage: () => void
@@ -989,6 +991,16 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const clearBlockedStudent = async (classId: string) => {
+    try {
+      const updated = await import("@/lib/supabaseApi").then((m) => m.clearBlockedStudent(classId))
+      dispatch({ type: "SET_BLOCKED_STUDENT", payload: { classId, studentId: (updated as any).blocked_student_id ?? null } })
+    } catch (error) {
+      console.error("Failed to clear blocked student:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to clear blocked" })
+    }
+  }
+
   const setQuestionPoints = (classId: string, points: number[]) => {
     dispatch({ type: "SET_QUESTION_POINTS", payload: { classId, points } })
   }
@@ -1010,6 +1022,16 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }
 
+  const resetAnswersAndLock = async (classId: string) => {
+    try {
+      await supaClearAnswers(classId)
+      await supaLockCurrentQuiz(classId)
+    } catch (error) {
+      console.error("Failed to reset answers and lock:", error)
+      dispatch({ type: "SET_ERROR", payload: "Failed to reset and lock" })
+    }
+  }
+
   const resetAllScores = async (classId: string) => {
     try {
       await supaResetAllScores(classId)
@@ -1028,7 +1050,10 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       // 2) Open quiz for everyone on server (clear answers + unlock + optionally set blocked_student_id)
-      await supaOpenQuizForEveryone(classId, opts?.excludeStudentId)
+      const updatedSession = await supaOpenQuizForEveryone(classId, opts?.excludeStudentId)
+      // Optimistically update blocked student and lock state immediately (realtime will confirm)
+      dispatch({ type: "SET_BLOCKED_STUDENT", payload: { classId, studentId: (updatedSession as any).blocked_student_id ?? null } })
+      dispatch({ type: "SET_QUIZ_LOCK", payload: { classId, isLocked: !!updatedSession.is_quiz_locked } })
 
       // 3) Dispatch local quiz state with bank metadata for explanation/tags
       const quiz: Quiz = {
@@ -1066,6 +1091,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dispatch,
         openQuizForEveryone,
         lockQuiz,
+        clearBlockedStudent,
         setQuestionPoints,
         setCurrentQuestionIndex,
         setWrongPoints,
@@ -1092,6 +1118,7 @@ export const ClassroomProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         saveToLocalStorage,
         loadFromLocalStorage,
         clearAnswers,
+        resetAnswersAndLock,
         resetAllScores,
         startRandomQuizFromBank,
       }}

@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Activity as ActivityIcon, LogOut, Lock, Unlock, Eraser } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "@/hooks/use-toast"
 import { Activity } from "@/types/classroom"
+import { supabase } from "@/lib/supabaseClient"
 
 interface StudentDashboardProps {
   studentId: string
@@ -30,6 +31,53 @@ export function StudentDashboard({ studentId, onBack }: StudentDashboardProps) {
 
   const isBlocked = Boolean(state.currentClass.blockedStudentId && state.currentClass.blockedStudentId === studentId)
   const isDisabled = !!state.currentClass.isQuizLocked || isBlocked
+  // Realtime: reflect teacher's reset answers or updates to my answer
+  useEffect(() => {
+    if (!state.currentClass) return
+    const classId = state.currentClass.id
+    const myId = studentId
+
+    const channel = supabase
+      .channel(`answers_${classId}_${myId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "answers", filter: `class_session_id=eq.${classId}` },
+        (payload) => {
+          const row = payload.new as any
+          if (row.student_id === myId) {
+            setSelectedAnswer(row.selected_answer)
+            setClickedButton(null)
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "answers", filter: `class_session_id=eq.${classId}` },
+        (payload) => {
+          const row = payload.new as any
+          if (row.student_id === myId) {
+            setSelectedAnswer(row.selected_answer)
+            setClickedButton(null)
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "answers", filter: `class_session_id=eq.${classId}` },
+        (payload) => {
+          const row = payload.old as any
+          if (row.student_id === myId) {
+            setSelectedAnswer(null)
+            setClickedButton(null)
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [state.currentClass?.id, studentId])
 
   const handleScanSuccess = (points: number) => {
     setScanSuccess({ points, timestamp: Date.now() })

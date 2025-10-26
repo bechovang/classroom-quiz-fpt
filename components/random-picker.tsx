@@ -64,7 +64,7 @@ export function RandomPicker({ selectedStudent, onStudentSelected }: RandomPicke
           setSpinningName("")
           setShowConfetti(true)
 
-          // Trigger random quiz from bank and exclude picked student from answering
+          // First update blocked student & unlock/clear on server, then start quiz from bank
           startRandomQuizFromBank(state.currentClass!.id, { excludeStudentId: pickedStudent.id }).catch(() => {})
 
           // Hide confetti after animation

@@ -20,7 +20,7 @@ interface QuizDialogProps {
 }
 
 export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
-  const { state, setCorrectAnswer, lockQuiz, openQuizForEveryone, callRandomStudent, startRandomQuizFromBank } = useClassroom()
+  const { state, setCorrectAnswer, lockQuiz, openQuizForEveryone, callRandomStudent, startRandomQuizFromBank, clearAnswers, resetAnswersAndLock, clearBlockedStudent } = useClassroom()
   const [selected, setSelected] = useState<"A" | "B" | "C" | "D" | null>(null)
   const [qrOpen, setQrOpen] = useState(false)
   const [checked, setChecked] = useState(false)
@@ -39,6 +39,10 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
     if (!open) return
     setSelected(null)
     setChecked(false)
+    // Reset answers when opening the quiz dialog to start a fresh round
+    if (state.currentClass?.id) {
+      resetAnswersAndLock(state.currentClass.id).catch(() => {})
+    }
   }, [open, quiz?.id])
 
   useEffect(() => {
@@ -59,7 +63,9 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
   }, [open, selected, isLocked, isReady, checked])
 
   const handleSelect = (opt: "A" | "B" | "C" | "D") => {
-    if (!isReady || isLocked || !current || checked) return
+    if (!isReady || !current || checked) return
+    // Allow selecting while locked only if a blocked student exists (teacher selecting on their behalf)
+    if (isLocked && !current.blockedStudentId) return
     setSelected(opt)
   }
 
@@ -85,10 +91,10 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
 
       // Record correct answer locally for UI
       setCorrectAnswer(current.id, answerKey)
-      // If a student was called (blockedStudentId), treat the teacher's selected option as this student's answer
+      // If a student was called (blockedStudentId), teacher can select on their behalf even while locked
       try {
         if (current.blockedStudentId && selected) {
-          await import("@/lib/supabaseApi").then((m) => m.submitAnswer(current.id, current.blockedStudentId as string, selected))
+          await import("@/lib/supabaseApi").then((m) => m.submitAnswerAsTeacher(current.id, current.blockedStudentId as string, selected))
         }
       } catch (err) {
         console.error("Failed to record called student's answer:", err)
@@ -131,7 +137,16 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
   }, [current?.classCode, current?.id])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && state.currentClass?.id) {
+          // When dialog closes after a random round, clear the blocked student
+          clearBlockedStudent(state.currentClass.id).catch(() => {})
+        }
+        onOpenChange(v)
+      }}
+    >
       <DialogContent className="sm:max-w-none w-[92vw] max-w-[92vw] h-[88vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -218,7 +233,7 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
                       key={opt}
                       variant={isCorrect ? "default" : selected === opt ? "default" : "outline"}
                       className={`h-24 text-left justify-start text-base ${selected === opt ? "ring-2 ring-primary" : ""}`}
-                      disabled={isLocked || checked}
+                      disabled={checked || (isLocked && !current?.blockedStudentId)}
                       onClick={() => handleSelect(opt)}
                     >
                       <Badge variant="outline" className="mr-3">{opt}</Badge>
