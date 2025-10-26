@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { ClassHierarchy } from "@/components/class-hierarchy"
 import { RandomPicker } from "@/components/random-picker"
-import { ActionButtons } from "@/components/action-buttons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Trophy, RotateCcw, Users, Target, Calculator, LogOut, Lock, Unlock, Eraser, BookOpen } from "lucide-react"
@@ -145,8 +144,6 @@ export function TeacherDashboard() {
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="w-full max-w-2xl space-y-8">
               <RandomPicker selectedStudent={selectedStudent} onStudentSelected={setSelectedStudent} />
-
-              <ActionButtons selectedStudent={selectedStudent} onActionComplete={() => setSelectedStudent(null)} />
 
               {/* Quiz is shown in a dialog now; keep body clean */}
             </div>
