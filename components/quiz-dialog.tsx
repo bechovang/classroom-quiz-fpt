@@ -332,10 +332,13 @@ export function QuizDialog({ open, onOpenChange }: QuizDialogProps) {
                     <Button
                       key={opt}
                       variant={baseVariant as any}
-                      className={`w-full min-w-0 min-h-[2.75rem] py-2 text-sm text-left justify-start items-center ${selected === opt ? "ring-2 ring-primary" : ""} ${colorClass}`}
+                      // 1. Thêm "h-auto" để ghi đè chiều cao cố định của Button
+                      // 2. Quay lại dùng "items-start" để căn Badge với dòng đầu tiên
+                      className={`w-full min-w-0 min-h-[2.75rem] h-auto py-2 text-sm text-left justify-start items-start ${selected === opt ? "ring-2 ring-primary" : ""} ${colorClass}`}
                       disabled={checked || (isLocked && !current?.blockedStudentId)}
                       onClick={() => handleSelect(opt)}
                     >
+                      {/* Có thể thêm lại mt-0.5 để tinh chỉnh vị trí badge nếu cần */}
                       <Badge variant="outline" className="mr-2 mt-0.5 shrink-0">{opt}</Badge>
                       <span className="flex-1 min-w-0 whitespace-pre-wrap break-words text-left">{quiz!.options[opt]}</span>
                     </Button>
